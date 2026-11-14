@@ -115,6 +115,38 @@ fn the_release_lane_is_the_only_one_and_is_complete_and_least_privileged() {
     assert!(!release.contains("release-artifacts/SHA256SUMS\n"));
 }
 
+/// One compiler for every build: `rust-toolchain.toml` pins an exact
+/// release, no workflow installs a floating one, and the manifest's
+/// `rust-version` names the same release, so a bump is one deliberate change.
+#[test]
+fn every_build_uses_the_pinned_toolchain() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let toolchain = fs::read_to_string(root.join("rust-toolchain.toml")).unwrap();
+    let channel = toolchain
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("channel = "))
+        .expect("rust-toolchain.toml names a channel")
+        .trim_matches('"');
+    let parts: Vec<&str> = channel.split('.').collect();
+    assert!(
+        parts.len() == 3 && parts.iter().all(|part| part.parse::<u32>().is_ok()),
+        "the channel is an exact release, not {channel}"
+    );
+
+    let manifest = fs::read_to_string(root.join("Cargo.toml")).unwrap();
+    assert!(
+        manifest.contains(&format!("rust-version = \"{}.{}\"", parts[0], parts[1])),
+        "the workspace rust-version matches the pinned {channel}"
+    );
+
+    for workflow in ["ci.yml", "release.yml"] {
+        let text = fs::read_to_string(root.join(".github/workflows").join(workflow)).unwrap();
+        assert!(!text.contains("rust-toolchain@"), "{workflow}");
+        assert!(!text.contains("toolchain: stable"), "{workflow}");
+        assert!(text.contains("rustup show active-toolchain"), "{workflow}");
+    }
+}
+
 #[test]
 fn ci_gates_pull_requests_into_master() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");

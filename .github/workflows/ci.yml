@@ -40,8 +40,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      # No toolchain action: rustup reads rust-toolchain.toml and installs the
+      # pinned compiler, so CI builds with exactly the developer's rustc.
+      - name: Show pinned toolchain
+        shell: bash
+        run: |
+          rustup show active-toolchain
+          rustc -vV
 
       - uses: Swatinem/rust-cache@v2
 
@@ -74,8 +79,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      # No toolchain action: rustup reads rust-toolchain.toml and installs the
+      # pinned compiler, so CI builds with exactly the developer's rustc.
+      - name: Show pinned toolchain
+        shell: bash
+        run: |
+          rustup show active-toolchain
+          rustc -vV
 
       # Both matrix legs of one OS are the same job, so without this they share
       # a cache key: they race to save it, the loser never saves, and every run

@@ -12,7 +12,7 @@ as a client of this CLI.
 
 | Requirement | Notes |
 |---|---|
-| **Rust 1.88+** | `rustup update stable` (edition 2024) |
+| **rustup** | installs the pinned toolchain, Rust 1.100.0, on the first build — see [The toolchain](#the-toolchain) |
 | **C linker** | Windows: MSVC build tools; Linux: `gcc`; macOS: Xcode CLT |
 | **clang** | Windows ARM64 only — see below |
 
@@ -31,6 +31,25 @@ cargo build --release
 
 x86-64 Windows is unaffected, and GitHub's ARM runners ship LLVM, so CI needs
 no extra step.
+
+## The toolchain
+
+`rust-toolchain.toml` pins one exact Rust release (`channel = "1.100.0"`),
+with `rustfmt` and `clippy`. rustup reads it in this directory, so a local
+build, CI and the release workflow all use that compiler; the workflows
+install no toolchain of their own. The workspace `rust-version` names the
+same release, and an architecture test keeps the two and the workflows in
+step. `rustup update` elsewhere does not move it.
+
+A toolchain update is its own pull request, with nothing else in it:
+
+1. On a branch from `master`, set `channel` to the new release and
+   `rust-version` in `Cargo.toml` to its major.minor.
+2. Run the verification baseline (`AGENTS.md`) with the new compiler and fix
+   what its new lints report; behaviour does not change in this pull
+   request, so a test that needs changing is a finding to stop on.
+3. Open the pull request titled "Rust X.Y.Z". CI and the release candidate
+   prove it on every platform and archive; squash-merge once both are green.
 
 ## Build and run
 

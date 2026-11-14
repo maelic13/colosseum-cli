@@ -5,57 +5,63 @@
 <h1 align="center">Colosseum CLI</h1>
 
 <p align="center">
-  Rigorously test ordinary UCI chess engines from the command line.
+  Test UCI chess engines from the command line, with results you can trust.
 </p>
 
 > **Windows · Linux · macOS · GPL-3.0-or-later**
 
-Colosseum CLI answers *is this build better than that build, and can I trust
-the answer?* It plays fixed matches, pair-atomic SPRT gates, SPSA tunes,
-calibration runs, NPS and scaling measurements, position suites, round robins
-and gauntlets, with opening-book tools and statistics replay. It launches
-ordinary [UCI](https://www.shredderchess.com/chess-info/features/uci-universal-chess-interface.html)
-executables as separate processes: an engine needs no manifest, build
-integration or source access.
+Colosseum CLI is a command-line tool for chess-engine development. It answers
+*is this build stronger than that one, and can I believe the answer?* It plays
+fixed matches, tells you with an SPRT when a change has made an engine
+stronger or weaker, tunes engine parameters with SPSA, measures search speed,
+and runs round robins and gauntlets. It works with any ordinary
+[UCI](https://www.shredderchess.com/chess-info/features/uci-universal-chess-interface.html)
+engine: give it an executable, and it needs no manifest, build integration or
+source access.
 
-**Looking for the desktop application?** Colosseum, for running and watching
-engine tournaments, is developed in its own repository,
-[maelic13/colosseum](https://github.com/maelic13/colosseum), and drives
-this CLI.
-
----
-
-## What it does
-
-Colosseum CLI is built for experiments you can repeat and defend. Every
-run records the resolved inputs, the engine executables' hashes, one master
-seed, the games, checkpoints and the statistics in a self-contained run
-directory. Engine faults are counted and shown, never folded into a score.
+Looking for a desktop application? [Colosseum](https://github.com/maelic13/colosseum)
+is a separate program for running and watching engine tournaments: it shows
+the games live, keeps a library of your engines and rates them.
 
 ## Install
 
-Pick the [latest release](https://github.com/maelic13/colosseum-cli/releases/latest),
-download the archive for your platform (`colosseum-cli-…-windows-x64.zip`,
-`…-windows-arm64.zip`, `…-linux-x64.tar.gz` or `…-macos-arm64.tar.gz`),
-extract it anywhere and check it:
+Download the archive for your machine from the
+[latest release](https://github.com/maelic13/colosseum-cli/releases/latest)
+and extract it anywhere.
+
+| Platform | File |
+|---|---|
+| Windows, Intel or AMD | `colosseum-cli-…-windows-x64.zip` |
+| Windows, Arm (Snapdragon) | `colosseum-cli-…-windows-arm64.zip` |
+| Linux, Intel or AMD | `colosseum-cli-…-linux-x64.tar.gz` |
+| macOS, Apple Silicon | `colosseum-cli-…-macos-arm64.tar.gz` |
+
+Then check it works:
 
 ```text
 colosseum-cli --version
 colosseum-cli self-test
 ```
 
-The archive contains the executable, the licence and the complete guide for
-that exact version. On Linux and macOS run `./colosseum-cli` unless the
-directory is on your `PATH`. To check the download arrived intact, compare its
-SHA-256 with the digest GitHub shows beside that asset on the release page
-(`Get-FileHash` on Windows, `sha256sum` on Linux, `shasum -a 256` on macOS).
-If you pin a version in automation, pin that digest with it.
+On Linux and macOS, run `./colosseum-cli` unless the directory is on your
+`PATH`. The archive also holds the licence and the complete guide for that
+exact version, so it works offline.
 
-To build it yourself instead, see [Build from source](#build-from-source).
+To check a download arrived intact, compare its SHA-256 with the digest GitHub
+shows beside that asset on the release page:
+
+```text
+Get-FileHash colosseum-cli-0.5.0-windows-x64.zip
+sha256sum colosseum-cli-0.5.0-linux-x64.tar.gz
+shasum -a 256 colosseum-cli-0.5.0-macos-arm64.tar.gz
+```
+
+The three lines are Windows, Linux and macOS respectively. If you pin a version
+in automation, pin that digest with it.
 
 ## First experiments
 
-Inspect two engines, then play a fixed match between them at 100 ms a move:
+Check two engines, then play a fixed match between them at 100 ms a move:
 
 ```text
 colosseum-cli engine check ./candidate
@@ -69,10 +75,9 @@ Gate a change with a sequential test that stops as soon as the evidence is in:
 colosseum-cli sprt ./candidate ./baseline --preset gainer --max-pairs 5000 --book ./openings.epd --dir ./runs/gate-42
 ```
 
-A schedule draws one opening per colour-reversed pair and refuses to start if
-the book cannot cover it, rather than quietly replaying positions it has
-already played — so size the book to the run, or pass `--book-wrap` to reuse
-openings deliberately.
+Every opening is played twice, once with each colour. A run refuses to start
+if the book is too small for it, rather than quietly replaying openings — size
+the book to the run, or pass `--book-wrap` to reuse openings on purpose.
 
 Tune UCI options with SPSA from a small TOML file that lists the parameters:
 
@@ -80,11 +85,39 @@ Tune UCI options with SPSA from a small TOML file that lists the parameters:
 colosseum-cli spsa ./engine --tune ./tune.toml --r-end 0.002 --iterations 500 --book ./openings.epd --dir ./runs/tune-1
 ```
 
-Run directories are created under `./colosseum-runs/` unless `--dir` names
-one. Stop a long run with one interrupt and start the same command again to
-resume it.
+Stop a long run with one Ctrl+C and start the same command again to resume
+it.
 
-The conditions every experiment in a project shares — the book, the
+## What it can do
+
+| Command | What it is for |
+|---|---|
+| `match` | A fixed number of games between two engines |
+| `sprt` | Decide whether a change gained or lost strength, stopping as soon as the evidence is in |
+| `spsa` | Tune numeric UCI options, with history, status and seeding from an earlier tune |
+| `tournament`, `gauntlet` | Round robins and gauntlets with joint ratings and error bars |
+| `calibrate` | Check that an engine against itself scores even under your conditions |
+| `nps` | Measure search speed at a fixed node count, and how it scales with threads |
+| `suite` | Fixed-work searches over an EPD or FEN position set |
+| `book` | Inspect, verify, hash or slice an opening book |
+| `stats` | Recompute results from a run's games, or plan how many games a test needs |
+| `engine` | Inspect an engine's UCI options or check it behaves |
+| `status` | Read the state of any run, running or finished, without touching it |
+| `capabilities`, `self-test` | What this machine supports, and whether this executable works |
+
+`colosseum-cli <command> --help` lists every option.
+
+## Results you can trust
+
+Every run writes a self-contained directory, under `./colosseum-runs/` unless
+`--dir` names one. It records the resolved settings, the engine executables'
+hashes, one master seed, every game, checkpoints and the final statistics, so
+a result can be checked, replayed or resumed later. Engine crashes, time
+losses and illegal moves are counted and shown, never folded silently into a
+score. Engines can be pinned to CPU cores so parallel games do not disturb
+each other.
+
+The settings every experiment in a project shares — the book, the
 concurrency, the seed — belong in a run file rather than in each command line,
 so every result was measured the same way:
 
@@ -102,61 +135,48 @@ seed = 42
 colosseum-cli --run-file ./colosseum.toml match ./candidate ./baseline --games 100
 ```
 
-A path inside a run file is relative to the file itself, not to where you run
-the command, so the file travels with the project. A run file can carry the
-whole command instead, and anything on the command line replaces what the file
-says. `colosseum-cli <command> --help` lists every option, and
-[run files](docs/cli/run-files.md) covers inheritance and unsetting.
+A path inside a run file is relative to the file itself, so the file travels
+with the project. Anything on the command line replaces what the file says.
 
-Continue with the [quickstart](docs/cli/quickstart.md), the
-[command reference](docs/cli/command-reference.md),
-[how to trust a result](docs/cli/trust-results.md) and
-[what the CLI needs from an engine](docs/cli/compatibility.md). The
-[complete CLI guide](docs/cli/README.md) indexes everything else.
+## Learn more
 
----
+- [Quickstart](docs/cli/quickstart.md)
+- [Complete guide](docs/cli/README.md), with a page per command
+- [Command reference](docs/cli/command-reference.md)
+- [How to trust and report a result](docs/cli/trust-results.md)
+- [What the CLI needs from an engine](docs/cli/compatibility.md)
+- [Run files](docs/cli/run-files.md)
 
-## Build from source
+## What changed
 
-Install **Rust 1.88 or newer**, then clone the repository:
+See the [changelog](CHANGELOG.md).
+
+## Building from source
+
+Clone the repository and run it with Cargo. [rustup](https://rustup.rs/)
+installs the exact Rust version the project pins on the first build:
 
 ```text
 git clone https://github.com/maelic13/colosseum-cli.git
 cd colosseum-cli
-```
-
-Windows on Arm also needs `clang`; the
-[development guide](docs/DEVELOPMENT.md#prerequisites) has the details.
-
-To try it straight away:
-
-```text
 cargo run -p colosseum-cli -- --help
 ```
 
-`cargo xtask` is the one entry point for real builds, and the release workflow
-calls the same commands, so what you build locally is what a release ships:
+`cargo xtask` builds what a release ships:
 
 ```text
 cargo xtask build   cli          # the executable, path printed
 cargo xtask package cli          # the downloadable archive, into target/dist/
 ```
 
-`package` also prints the archive's SHA-256 and unpacks it to check it. The
-[development guide](docs/DEVELOPMENT.md#one-build-entry-point) covers
-cross-target builds and the release checks.
+Windows on Arm also needs `clang`. The
+[development guide](docs/DEVELOPMENT.md) covers that, the tests and the
+release process.
 
----
+## Help
 
-## Help and project links
+Something broken or missing? [Open an issue](https://github.com/maelic13/colosseum-cli/issues).
 
-- Something broken or missing? [Open an issue](https://github.com/maelic13/colosseum-cli/issues).
-- Release history: [changelog](CHANGELOG.md)
-- Building, testing and releasing from source: [development guide](docs/DEVELOPMENT.md)
+## License
 
----
-
-## Licence
-
-Colosseum CLI is free software under the **GNU General Public License v3.0 or
-later** — see [LICENSE](LICENSE). Copyright © 2026 Miloslav Macůrek.
+[GPL-3.0-or-later](LICENSE). Copyright © 2026 Miloslav Macůrek.

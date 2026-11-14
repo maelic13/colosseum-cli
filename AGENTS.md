@@ -52,6 +52,10 @@ The maintainer owns every remote operation.
   lines on what and why, wrapped at 72 columns; then, after an empty line,
   the verification, one line each ("Tests: cargo test --workspace
   --all-targets, 1,204 passed").
+- The Rust toolchain is pinned in `rust-toolchain.toml`. Never change it as
+  part of other work: a toolchain update is its own pull request, "Rust
+  X.Y.Z", with only the bump and the fixes its new lints need
+  (`docs/DEVELOPMENT.md`, *The toolchain*).
 - A user-visible change adds its entry under `CHANGELOG.md`'s
   `[Unreleased]` in the commit that makes it, written for users. A release
   only dates that section.

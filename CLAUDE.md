@@ -20,7 +20,8 @@ until 2.0; nothing of it remains in this repository.
 | `colosseum-engine` | The one-game runner, PGN, openings, incident forensics (feature `runner`) and OS topology/allowed-CPU/affinity adapters (feature `platform`) |
 | `colosseum-cli` | The headless composition root; ordinary UCI executables only. `composition.rs` holds the parser, dispatch and shared resolvers, with one module per command in `composition/` |
 
-Commands: `cargo check --workspace --tests`, `cargo clippy --workspace
+The Rust toolchain is pinned in `rust-toolchain.toml` (1.100.0); updating it is
+its own pull request. Commands: `cargo check --workspace --tests`, `cargo clippy --workspace
 --all-targets -- -D warnings`, `cargo test --workspace --all-targets`; run the
 CLI with `cargo run -p colosseum-cli -- --help`; builds and archives through
 `cargo xtask build|package cli`. Before implementation work, read `AGENTS.md`,

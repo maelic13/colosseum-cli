@@ -2,7 +2,7 @@
 
 Run `colosseum-cli self-test` after installing or unpacking the CLI. The command
 uses a hidden deterministic UCI stub compiled into that exact executable; it
-does not rely on Stockfish, a network connection, the GUI, or a developer
+does not rely on Stockfish, a network connection, the desktop application, or a developer
 checkout.
 
 The checks cover:

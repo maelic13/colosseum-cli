@@ -59,8 +59,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      # No toolchain action: rustup reads rust-toolchain.toml and installs the
+      # pinned compiler, so CI builds with exactly the developer's rustc.
+      - name: Show pinned toolchain
+        shell: bash
+        run: |
+          rustup show active-toolchain
+          rustc -vV
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -134,10 +139,16 @@ jobs:
           ref: ${{ needs.prepare.outputs.source_sha }}
           persist-credentials: false
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+      # No toolchain action: rustup reads rust-toolchain.toml and installs the
+      # pinned compiler, so CI builds with exactly the developer's rustc.
+      - name: Show pinned toolchain
+        shell: bash
+        run: |
+          rustup show active-toolchain
+          rustc -vV
+
+      - name: Install the archive's Rust target
+        run: rustup target add ${{ matrix.target }}
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -219,9 +230,12 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Install Rust toolchain
+      - name: Show pinned toolchain
         if: needs.prepare.outputs.mode == 'release'
-        uses: dtolnay/rust-toolchain@stable
+        shell: bash
+        run: |
+          rustup show active-toolchain
+          rustc -vV
 
       - name: Add the release notes to the stable bundle
         if: needs.prepare.outputs.mode == 'release'
