@@ -18,7 +18,7 @@ internal naming or method argumentation.
 | What is missing | **Phase 12(d)**, the engine projects' requests, released as **CLI 0.6.0** — the first release through pull-request delivery. Then **Phase 11** (11.3 gap analysis and its decisions 11.3.1–11.3.5, the 11.4 protocol specification), **Phase 13** (the protocol, one CLI minor release) and **14.2** (the release pair); 12.5. In the desktop repository: GUI Phases 1–5 |
 | Validation engines | Two independently developed UCI engines in different languages and build systems. Any two UCI engines would serve; nothing depends on which |
 | Platform status | Windows/Linux/macOS ☑ required debug and optimized CI on every pull request into `master` · Windows x86-64/ARM64, Linux x86-64 and macOS ARM64 release archives ☑ built, packaged and smoked as a candidate on every pull request, exactly as a tag builds them |
-| Next step | **12.6** — the time to an SPSA stop point — `I1` (Claude Sonnet 5 — Medium); then the further 0.6.0 requests the maintainer selects, numbered 12.7 onward; then the 0.6.0 release pull request. In the desktop repository: 1.2.0 from `legacy/`, then **1.1.1–1.1.4** and 1.2. 11.3 waits for GUI 1.2 |
+| Next step | The further 0.6.0 requests the maintainer selects, numbered 12.7 onward (12.6 done); then the 0.6.0 release pull request. In the desktop repository: 1.2.0 from `legacy/`, then **1.1.1–1.1.4** and 1.2. 11.3 waits for GUI 1.2 |
 | Confirmed decisions | The 2026-09-22 set, confirmed by the maintainer and not reopened, recorded with the release preparation in [`phase-10-record.md`](docs/architecture/phase-10-record.md): exclusion for unspawnable engines, the xtask surface, versions kept in artifact names, the throughput margin not chased. The 2026-09-27 set for GUI v2, in [ADR-0011](docs/architecture/adr/0011-desktop-application-as-separate-cli-client.md) and PLAN §Phase 11: design first; the desktop application a separate repository over a CLI protocol; this repository the CLI alone; 1.x tournaments not migrated; no CLI runs in the GUI; device theme with light and dark; no served dashboard, broadcast and remote control kept possible; front-end technology provisional (TypeScript + React) until measured. The same day's review set, in PLAN §S8 maintainer requirements and §S5.15: placement stays a CLI feature and desktop tournaments run with it off, several at a time; 64 participants the design point; lifecycle and close behaviour analysed at implementation (13.4 / GUI 4.2) with *stop now on close* the starting preference; changed engines and amendments (add, remove, length) are CLI mechanisms decided at 11.3; configuration by run file, a rebuildable index, positions as FEN, two event classes, emission off the game path, a handshake version, short-lived queries, synthetic streams; the shell a measured choice at GUI 2.3; the 1.x engine library imported. The 2026-09-28 naming set, in [ADR-0012](docs/architecture/adr/0012-names-and-repositories-after-the-split.md): Colosseum and `colosseum-cli` kept; the naming risk accepted, both products renamed together if a conflict ever arises; the new application's data directories apart from 1.x's. The 2026-11-14 split set, in ADR-0012's revision: the swap and this repository's merge at the split; plain `v` tags with the `cli-v` releases re-tagged; no bridge release; the 1.x releases deleted here once desktop 1.2.0 is out; the prototype and x64 branches dropped; Rarog's delivery adopted — short-lived branches, one squash pull request each with a short title and description, CI and the release candidate on every pull request; the Rust toolchain pinned (1.100.0), each update its own tested pull request |
 
 ## Current model mapping
@@ -222,14 +222,13 @@ for it, and the GUI tracker says the same the other way.
 - ☐ **12.5** — `I1` — An unparsable start position is refused
   instead of silently replaced by the standard one (from the 1.x
   inventory) — PLAN §Phase 12(c)
-- ☐ **12.6** — `I1` — The time to an SPSA stop point: with
+- ☑ **12.6 — DONE** — `I1` — The time to an SPSA stop point: with
   `--stop-after-iteration` below the total, progress reports, `run.log` and
   `spsa status` give the time left to the stop point beside the time left
-  to the end; first of the CLI 0.6.0 requests — PLAN §Phase 12(d)
-- ☐ **12.6** — `I1` — The time to an SPSA stop point: with
-  `--stop-after-iteration` below the total, progress reports, `run.log` and
-  `spsa status` give the time left to the stop point beside the time left
-  to the end; first of the CLI 0.6.0 requests — PLAN §Phase 12(d)
+  to the end; first of the CLI 0.6.0 requests. Evidence 2026-11-14: a
+  synthetic tune stopped at 1, resumed to 3, then to the end asserts the
+  `time to stop` line in the block and `run.log` and `eta.stop_point` in
+  `spsa status`, and its absence without a stop — PLAN §Phase 12(d)
 
 ### Deferred and post-release (not steps until reopened)
 
@@ -306,9 +305,9 @@ in short:
 
 **The split is done; this repository is the CLI alone.** In order:
 
-1. **CLI 0.6.0** — the engine projects' requests (Phase 12(d)): 12.6 first,
-   then each request the maintainer selects, one branch and one squash pull
-   request each, then the release pull request "Release 0.6.0" and the
+1. **CLI 0.6.0** — the engine projects' requests (Phase 12(d)): 12.6 (done),
+   then each request the maintainer selects, on the `engine-requests` branch
+   as one commit each, then the release pull request "Release 0.6.0" and the
    `v0.6.0` tag. It is also the first full run of the delivery path.
 2. The desktop repository, [`maelic13/colosseum`](https://github.com/maelic13/colosseum),
    tracks its own steps in its `GUIDE.md`: 1.2.0 from `legacy/`, then GUI

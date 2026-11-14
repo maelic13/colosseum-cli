@@ -81,6 +81,21 @@ pub struct SpsaEta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unavailable_reason: Option<String>,
     pub interpretation: String,
+    /// The time to the iteration this invocation was asked to stop at, when
+    /// that stop falls before the end of the tune. Absent without one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_point: Option<SpsaStopPointEta>,
+}
+
+/// The time left to a requested stop before the horizon, projected from the
+/// same observed rate as the time left to the end.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SpsaStopPointEta {
+    /// The committed-iteration count the tune stops at.
+    pub iteration: u32,
+    /// Zero once the stop point is reached; absent while the rate is unknown.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remaining_seconds: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -102,6 +117,7 @@ pub fn diagnose_spsa(
     history: &[SpsaCenterSample],
     invalid: bool,
     elapsed_to_last_checkpoint_seconds: Option<f64>,
+    stop_after_iteration: Option<u32>,
 ) -> Result<SpsaStatusReport, SpsaStatusError> {
     settings.validate()?;
     schedule.validate()?;
@@ -124,12 +140,19 @@ pub fn diagnose_spsa(
     }
     let completed_iterations = u32::try_from(history.len()).expect("history is bounded by u32");
     let percent_complete = f64::from(completed_iterations) * 100.0 / f64::from(settings.iterations);
-    let eta = eta(
+    let mut eta = eta(
         settings,
         completed_iterations,
         invalid,
         elapsed_to_last_checkpoint_seconds,
     )?;
+    eta.stop_point = stop_point(
+        settings,
+        completed_iterations,
+        invalid,
+        elapsed_to_last_checkpoint_seconds,
+        stop_after_iteration,
+    );
     let coefficient_iteration = completed_iterations.min(settings.iterations - 1);
     let knobs = tune
         .parameters
@@ -264,6 +287,7 @@ fn eta(
             completed_iterations_basis: completed,
             unavailable_reason: Some("the tune is invalid and will not advance".into()),
             interpretation: "unavailable".into(),
+            stop_point: None,
         });
     }
     if completed == settings.iterations {
@@ -272,6 +296,7 @@ fn eta(
             completed_iterations_basis: completed,
             unavailable_reason: None,
             interpretation: "horizon complete".into(),
+            stop_point: None,
         });
     }
     let Some(elapsed) = elapsed else {
@@ -282,6 +307,7 @@ fn eta(
                 "no uncontaminated elapsed-to-checkpoint timing is available".into(),
             ),
             interpretation: "unavailable".into(),
+            stop_point: None,
         });
     };
     if !elapsed.is_finite() || elapsed < 0.0 {
@@ -293,6 +319,7 @@ fn eta(
             completed_iterations_basis: completed,
             unavailable_reason: Some("no completed timed iteration is available".into()),
             interpretation: "unavailable".into(),
+            stop_point: None,
         });
     }
     Ok(SpsaEta {
@@ -302,6 +329,33 @@ fn eta(
         completed_iterations_basis: completed,
         unavailable_reason: None,
         interpretation: "linear projection from durable elapsed time through the last committed checkpoint; setup and host-load changes may make it inaccurate".into(),
+        stop_point: None,
+    })
+}
+
+/// The time to a stop requested before the horizon, at the rate the time to
+/// the end uses. A stop at or past the horizon is the end, so it adds nothing.
+fn stop_point(
+    settings: SpsaRunSettings,
+    completed: u32,
+    invalid: bool,
+    elapsed: Option<f64>,
+    stop_after_iteration: Option<u32>,
+) -> Option<SpsaStopPointEta> {
+    let iteration = stop_after_iteration.filter(|stop| *stop < settings.iterations)?;
+    if invalid {
+        return None;
+    }
+    let remaining_seconds = if completed >= iteration {
+        Some(0.0)
+    } else {
+        elapsed
+            .filter(|elapsed| elapsed.is_finite() && *elapsed > 0.0 && completed > 0)
+            .map(|elapsed| elapsed / f64::from(completed) * f64::from(iteration - completed))
+    };
+    Some(SpsaStopPointEta {
+        iteration,
+        remaining_seconds,
     })
 }
 
@@ -452,6 +506,7 @@ mod tests {
             &history(&values),
             false,
             Some(60.0),
+            None,
         )
         .unwrap();
         assert_eq!(report.completed_iterations, 6);
@@ -486,6 +541,7 @@ mod tests {
             &history(&[50.0, 50.1]),
             false,
             None,
+            None,
         )
         .unwrap();
         let knob = &report.knobs[0];
@@ -506,6 +562,7 @@ mod tests {
             &history(&[50.0; 6]),
             false,
             Some(6.0),
+            None,
         )
         .unwrap();
         assert_eq!(
@@ -513,5 +570,40 @@ mod tests {
             SpsaHeuristicState::Observed
         );
         assert!(report.interpretation.contains("never advice"));
+    }
+
+    #[test]
+    fn a_stop_before_the_horizon_has_its_own_time_from_the_same_rate() {
+        let status = |completed: usize, stop: Option<u32>| {
+            diagnose_spsa(
+                &bound(1.0),
+                &schedule(9, 1.0),
+                SpsaRunSettings::new(9, 2).unwrap(),
+                &history(&vec![50.0; completed]),
+                false,
+                Some(10.0 * completed as f64),
+                stop,
+            )
+            .unwrap()
+            .eta
+        };
+        // Ten seconds an iteration: four to the stop at 6, seven to the end.
+        let eta = status(2, Some(6));
+        assert_eq!(eta.remaining_seconds, Some(70.0));
+        assert_eq!(
+            eta.stop_point,
+            Some(SpsaStopPointEta {
+                iteration: 6,
+                remaining_seconds: Some(40.0)
+            })
+        );
+        // A reached stop has no time left; the end still has its own.
+        let eta = status(6, Some(6));
+        assert_eq!(eta.stop_point.unwrap().remaining_seconds, Some(0.0));
+        assert_eq!(eta.remaining_seconds, Some(30.0));
+        // No stop, or a stop that is the end, adds nothing.
+        assert_eq!(status(2, None).stop_point, None);
+        assert_eq!(status(2, Some(9)).stop_point, None);
+        assert_eq!(status(2, Some(12)).stop_point, None);
     }
 }

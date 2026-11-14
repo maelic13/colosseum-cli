@@ -2350,7 +2350,10 @@ a finite ETA in `spsa status`.
     end, the report is unchanged. A test runs a synthetic tune with a stop
     point and asserts both figures in the progress output, `run.log` and
     `spsa status`, and that a resumed run with a new stop point reports the
-    new one.
+    new one. Done 2026-11-14: the block's `time to stop` line sits just above
+    `time remaining` and reads `<time>, at iteration N`; `spsa status` takes
+    the stop from the latest invocation's run record and reports it as
+    `eta.stop_point`.
 
 **Exit criterion (b):** each step's tests pass, the command reference is
 regenerated, `CHANGELOG.md` Unreleased names each change, and the run

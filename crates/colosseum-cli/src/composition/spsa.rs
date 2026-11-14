@@ -432,6 +432,9 @@ pub(crate) struct StoredSpsaWorkflow {
     pub(crate) bound_tune: SpsaBoundTune,
     pub(crate) engine_sha256: String,
     pub(crate) schedule: SpsaScheduleArtifact,
+    /// The stop the latest invocation asked for, in committed iterations.
+    #[serde(default)]
+    pub(crate) stop_after_iteration: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -597,6 +600,7 @@ pub(crate) fn run_spsa_status(run_directory: &Path, machine: bool) -> ExitCode {
         &centers,
         invalid,
         elapsed,
+        workflow.stop_after_iteration,
     ) {
         Ok(report) => report,
         Err(error) => {
@@ -1079,6 +1083,18 @@ pub(crate) fn print_spsa_status(report: &SpsaStatusOutput, run_directory: &Path)
                 .as_deref()
                 .unwrap_or("no reason recorded")
         ),
+    }
+    if let Some(stop) = &report.diagnostics.eta.stop_point {
+        match stop.remaining_seconds {
+            Some(seconds) => println!(
+                "ETA to the stop at iteration {}: {seconds:.1} seconds",
+                stop.iteration
+            ),
+            None => println!(
+                "ETA to the stop at iteration {} unavailable: no completed timed iteration is available",
+                stop.iteration
+            ),
+        }
     }
     for knob in &report.diagnostics.knobs {
         let clamped = report
@@ -1733,6 +1749,7 @@ pub(crate) async fn run_spsa_command(
                         &observer,
                         &schedule,
                         settings,
+                        command.stop_after_iteration,
                         &centres,
                         fault_policy,
                     );
@@ -1745,7 +1762,14 @@ pub(crate) async fn run_spsa_command(
     if let Some(engines) = &kept_engines {
         engines.shutdown().await;
     }
-    let final_block = spsa_progress_block(&observer, &schedule, settings, &centres, fault_policy);
+    let final_block = spsa_progress_block(
+        &observer,
+        &schedule,
+        settings,
+        command.stop_after_iteration,
+        &centres,
+        fault_policy,
+    );
     if schedule.needs_final(final_block.done) {
         schedule.mark(final_block.done);
         observer.publish_progress(&final_block);
@@ -2092,10 +2116,15 @@ pub(crate) fn spsa_iteration_detail(
 /// What a tune tells the operator while it runs: how far through the horizon
 /// it is, how long is left, whether anything is faulting, which centres have
 /// hit a rail, and which knobs the search has actually moved.
+///
+/// A stop requested before the horizon gets its own time beside the time to
+/// the end, from the same rate: a tune stopped at 2,000 of 6,000 iterations
+/// is waited for until 2,000.
 pub(crate) fn spsa_progress_block(
     observer: &DurableSpsaOutput,
     schedule: &ProgressSchedule,
     settings: SpsaRunSettings,
+    stop_after_iteration: Option<u32>,
     centres: &SpsaCentreTracker,
     fault_policy: match_runner::FaultPolicy,
 ) -> ProgressBlock {
@@ -2158,18 +2187,29 @@ pub(crate) fn spsa_progress_block(
                 .unwrap_or_else(|| "nothing yet".to_owned()),
         );
     }
+    let time_for = |remaining: u64| match progress::time_for_units(
+        since_start,
+        schedule.session_elapsed(),
+        remaining,
+    ) {
+        Some(left) => progress::format_duration(left.as_secs_f64()),
+        None => "unknown".to_owned(),
+    };
+    // A stop at or past the horizon is the end, which the next line says.
+    if let Some(stop) = stop_after_iteration
+        .map(u64::from)
+        .filter(|stop| *stop < total)
+    {
+        block.field(
+            "time to stop",
+            format!(
+                "{}, at iteration {stop}",
+                time_for(stop.saturating_sub(done))
+            ),
+        );
+    }
     // Last, so the eye finds it in the same place on every block.
-    block.field(
-        "time remaining",
-        match progress::time_for_units(
-            since_start,
-            schedule.session_elapsed(),
-            total.saturating_sub(done),
-        ) {
-            Some(left) => progress::format_duration(left.as_secs_f64()),
-            None => "unknown".to_owned(),
-        },
-    );
+    block.field("time remaining", time_for(total.saturating_sub(done)));
     block
 }
 

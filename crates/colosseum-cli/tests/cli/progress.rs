@@ -454,3 +454,148 @@ fn a_match_report_carries_both_estimates_and_counts_its_abnormal_games() {
     let pgn = std::fs::read_to_string(run.join("games.pgn")).unwrap();
     assert_eq!(pgn.matches("[Result ").count(), 2, "{pgn}");
 }
+
+/// A tune asked to stop before its horizon reports the time to that stop
+/// beside the time to the end, in the block, its `run.log` line and
+/// `spsa status`; a resume with a new stop reports the new one, and a resume
+/// without one reports as before.
+#[test]
+fn a_tune_with_a_stop_point_reports_the_time_to_it() {
+    let root = tempfile::tempdir().unwrap();
+    let tune = root.path().join("tune.toml");
+    std::fs::write(
+        &tune,
+        "[[parameters]]\nname = \"Hash\"\ninitial = 16\nmin = 1\nmax = 1024\nc_end = 1.0\n",
+    )
+    .unwrap();
+    let run = root.path().join("run");
+    let tune_until = |stop: Option<u32>| {
+        let mut command = cli();
+        command
+            .arg("spsa")
+            .arg(one_move_engine())
+            .arg("--tune")
+            .arg(&tune)
+            .args([
+                "--r-end",
+                "0.002",
+                "--iterations",
+                "4",
+                "--games-per-iteration",
+                "2",
+                "--depth",
+                "1",
+                "--max-moves",
+                "2",
+                "--seed",
+                "7",
+                "--progress-every",
+                "1",
+                "--progress-min-secs",
+                "1",
+                // Instant in-process games: the stop is the driver's.
+                "--__synthetic-games",
+                "--dir",
+            ])
+            .arg(&run);
+        if let Some(stop) = stop {
+            command.args(["--stop-after-iteration", &stop.to_string()]);
+        }
+        command.output().unwrap()
+    };
+    let field = |block: &str, label: &str| {
+        block.lines().find_map(|line| {
+            line.trim()
+                .strip_prefix(label)
+                .map(str::trim)
+                .map(str::to_owned)
+        })
+    };
+    let logged = || {
+        let log = std::fs::read_to_string(run.join("run.log")).unwrap();
+        let block = log
+            .lines()
+            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+            .rfind(|event| event["event"] == "progress")
+            .expect("a recorded block");
+        block["progress"]["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|field| {
+                (
+                    field["label"].as_str().unwrap().to_owned(),
+                    field["value"].as_str().unwrap().to_owned(),
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    let status = || {
+        let output = cli()
+            .args(["spsa", "status"])
+            .arg(&run)
+            .arg("--json")
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{}", stderr(&output));
+        let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+        value["report"]["diagnostics"]["eta"].clone()
+    };
+    let status_text = || {
+        let output = cli().args(["spsa", "status"]).arg(&run).output().unwrap();
+        String::from_utf8_lossy(&output.stdout).into_owned()
+    };
+
+    for stop in [1, 3] {
+        let output = tune_until(Some(stop));
+        assert_eq!(output.status.code(), Some(6), "{}", stderr(&output));
+        let last = blocks(&stderr(&output)).pop().expect("a final block");
+        assert!(
+            last.starts_with(&format!("progress [spsa]: {stop}/4 iterations")),
+            "{last}"
+        );
+        assert_eq!(
+            field(&last, "time to stop").as_deref(),
+            Some(format!("0s, at iteration {stop}").as_str()),
+            "{last}"
+        );
+        assert!(field(&last, "time remaining").is_some(), "{last}");
+        assert!(
+            last.trim_end()
+                .lines()
+                .last()
+                .unwrap()
+                .contains("time remaining"),
+            "time remaining is the last line of:\n{last}"
+        );
+
+        let fields = logged();
+        let label = |name: &str| fields.iter().position(|(label, _)| label == name);
+        let stop_at = label("time to stop").expect("the stop in run.log");
+        assert_eq!(fields[stop_at].1, format!("0s, at iteration {stop}"));
+        assert_eq!(label("time remaining"), Some(stop_at + 1));
+
+        let eta = status();
+        assert_eq!(eta["stop_point"]["iteration"], stop);
+        assert_eq!(eta["stop_point"]["remaining_seconds"], 0.0);
+        assert!(
+            status_text().contains(&format!("ETA to the stop at iteration {stop}: 0.0 seconds")),
+            "{}",
+            status_text()
+        );
+    }
+
+    // Without a stop the tune runs to its end and reports as before.
+    let output = tune_until(None);
+    assert!(output.status.success(), "{}", stderr(&output));
+    let last = blocks(&stderr(&output)).pop().expect("a final block");
+    assert!(field(&last, "time to stop").is_none(), "{last}");
+    assert_eq!(
+        field(&last, "time remaining").as_deref(),
+        Some("0s"),
+        "{last}"
+    );
+    assert!(logged().iter().all(|(label, _)| label != "time to stop"));
+    assert!(status().get("stop_point").is_none());
+    assert!(!status_text().contains("ETA to the stop"));
+}

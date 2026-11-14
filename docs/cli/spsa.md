@@ -162,7 +162,8 @@ bound, which bound contact alone does not show.
 
 The report includes completed iteration and percentage, a linear ETA from the
 tune's elapsed time as its checkpoint records it across every stop and
-resume, and every knob's current
+resume (and, when the latest invocation asked to stop before the end, the
+ETA to that stop, `eta.stop_point` in JSON), and every knob's current
 floating centre and normalized trajectory. With at least six completed
 iterations it compares the mean of each history third and labels these fixed
 heuristics:
@@ -202,7 +203,9 @@ discarded; the run writes its checkpoint, is recorded as `cancelled`, exits
 with code `6`, and still emits a gate candidate from what it completed. The
 stored horizon is untouched: resuming the same `--dir` continues towards the
 original number of iterations. Use it to take a look at a long tune, or to
-stop one at a planned point without pretending it finished.
+stop one at a planned point without pretending it finished. While a stop
+below the total is pending, progress blocks and `spsa status` give the time
+left to it as well as to the end.
 
 **`N` is cumulative**, counted against every iteration the run directory holds,
 including those a resume replayed. Repeating the same command therefore plays
@@ -281,7 +284,14 @@ stopping a tune for. How far each knob has travelled since the start is in
 `run.log` and in `spsa status`, not on the console.
 
 The remaining time is a linear projection of the rate observed so far and
-reads `0s` once the horizon is reached. Movement is measured as a fraction of
+reads `0s` once the horizon is reached. A tune run with
+`--stop-after-iteration` below its total adds a line just above it, from the
+same rate, that reads `0s` once the stop is reached:
+
+```text
+  time to stop    1h00m, at iteration 1000
+  time remaining  2h44m
+``` Movement is measured as a fraction of
 each knob's own range, because ten units of a thousand-wide knob and ten units
 of a twenty-wide one are not the same fact, and it is measured from where the
 tune began: a knob that has travelled is one the search is pushing, and that

@@ -6,6 +6,13 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- A tune with `--stop-after-iteration` below its total reports how long is
+  left to the stop as well as to the end: a `time to stop` line in every
+  progress block and its `run.log` entry, and the time to the stop in
+  `spsa status` (`eta.stop_point` in JSON). Both come from the same
+  observed rate; a resume with a new stop reports the new one
+
 ### Changed
 - Colosseum CLI has its own repository,
   [maelic13/colosseum-cli](https://github.com/maelic13/colosseum-cli), and
