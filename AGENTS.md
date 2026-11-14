@@ -141,7 +141,8 @@ consistency validation; they do not require rerunning unchanged Rust tests.
 
 - `PLAN.md` and `GUIDE.md`: maintainer-facing specification and tracker.
   `PLAN.md` carries the binding specifications and only the open work;
-  completed phases are one line in `GUIDE.md` and a record file under
+  a completed phase is a `— CLOSED` heading in `PLAN.md` over a
+  one-paragraph summary, which the board shows, and a record file under
   `docs/architecture/`.
 - GUIDE's board is generated from `PLAN.md` by `python
   tools/guide_board.py`; never edit it by hand, and run `python

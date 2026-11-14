@@ -3,14 +3,15 @@
 
 PLAN.md's step heads are the only place a step's title, class and status are
 written; the board in GUIDE.md is generated from them, so the two cannot
-disagree. The design is Rarog's `tools/diag/guide_board.py`, adapted to this
-repository's numbering and markers.
+disagree. The design and the board's format are Rarog's
+`tools/diag/guide_board.py`, adapted to this repository's numbering.
 
 What PLAN must look like (the grammar this reads):
 
-- a phase is a level-3 heading `### Phase N — <name>`. Any other level-2 or
-  level-3 heading ends it. A finished phase's heading ends `— CLOSED <date>`
-  and its first paragraph is the summary the board shows instead of steps;
+- a phase is a level-3 heading `### Phase N — <name>` (`N` a number, or
+  `4A` for an old lettered phase). Any other level-2 or level-3 heading ends
+  it. A finished phase's heading ends `— CLOSED` (with an optional date) and
+  its first paragraph is the summary the board shows instead of steps;
 - a step head is a list item, at any indent, whose bold run reads
   `**<ID> <title> — <field>.**`, possibly wrapped over several lines. The ID
   is `N.M` or `N.M.K`, with `N` its phase's number. The title is what the
@@ -22,8 +23,10 @@ What PLAN must look like (the grammar this reads):
   are taken, one `| <ID> | <waits for> |` row each. Its first row is the
   board's Now; every row names an open step.
 
-The board sits in GUIDE.md between BEGIN and END below; everything outside
-the markers is hand-kept.
+The board sits first in GUIDE.md, between BEGIN and END below. Each phase is
+a level-2 heading and each step a task-list item, `- [x]` with its outcome or
+`- [ ]` with its classes in bold; a sub-step is indented four spaces.
+Everything outside the markers is hand-kept.
 
 Usage:
   python tools/guide_board.py            # rewrite GUIDE's board in place
@@ -44,7 +47,7 @@ BEGIN = ("<!-- board: generated from PLAN.md by `python tools/guide_board.py`; "
          "edit PLAN, never this block -->")
 END = "<!-- end of generated board -->"
 
-PHASE = re.compile(r"^### Phase (\d+) — (.+)$")
+PHASE = re.compile(r"^### Phase (\d+[A-Z]?) — (.+)$")
 HEADING = re.compile(r"^#{2,3} ")
 STEP = re.compile(r"^ *- \*\*(\d+\.\d+(?:\.\d+)?) ")
 CLASS = re.compile(r"`(R3|R2|I2|I1|M|V)`")
@@ -54,8 +57,6 @@ IN_PROGRESS = re.compile(r"\bIN PROGRESS\b")
 EXIT = re.compile(r"\bEXIT\b")
 ORDER_HEADING = "### Order of work"
 ORDER_ROW = re.compile(r"^\|\s*(\d+\.\d+(?:\.\d+)?)\s*\|\s*(.*?)\s*\|\s*$")
-
-MARK_OPEN, MARK_PROGRESS, MARK_DONE = "☐", "◐", "☑"
 
 
 class PlanError(Exception):
@@ -159,8 +160,8 @@ def parse_order(plan_text):
     return rows
 
 
-def _class_text(step):
-    return ", then ".join("`%s`" % cls for cls in step["classes"])
+def _classes(step):
+    return ", then ".join(step["classes"])
 
 
 def build_board(plan_text):
@@ -178,35 +179,29 @@ def build_board(plan_text):
     if order:
         sid, waits = order[0]
         now = steps[sid]
-        line = "**Now: %s** (%s): %s." % (sid, _class_text(now), now["title"])
+        line = "**Now: %s** (`%s`): %s." % (sid, "`, then `".join(now["classes"]),
+                                             now["title"])
         if waits:
             line += " Waits for %s." % waits
         out.append(line)
-        if len(order) > 1:
-            out.append("")
-            out.append("**Then:** %s." % ", ".join(sid for sid, _ in order[1:4]))
     else:
         out.append("**Now:** no step in the order of work.")
     for p in phases:
-        out += ["", p["heading"], ""]
+        out += ["", "## " + p["heading"][len("### "):], ""]
         if p["closed"]:
             out.append(p["summary"])
             continue
         for s in p["steps"]:
-            indent = "  " * (s["id"].count(".") - 1)
-            notes = [_class_text(s)]
-            if s["exit"]:
-                notes.append("EXIT")
+            indent = " " * (4 * (s["id"].count(".") - 1))
             if s["resolved"]:
-                mark = MARK_DONE
-                notes.append(s["resolved"])
+                box, suffix = "x", s["resolved"]
             elif s["in_progress"]:
-                mark = MARK_PROGRESS
-                notes.append("IN PROGRESS")
+                box, suffix = " ", "**IN PROGRESS / %s**" % _classes(s)
             else:
-                mark = MARK_OPEN
-            out.append("%s- %s **%s** %s — %s"
-                       % (indent, mark, s["id"], s["title"], ", ".join(notes)))
+                box, suffix = " ", "**%s**" % _classes(s)
+            if s["exit"] and not s["resolved"]:
+                suffix += ", EXIT"
+            out.append("%s- [%s] **%s** %s — %s" % (indent, box, s["id"], s["title"], suffix))
     return "\n".join(out) + "\n"
 
 
@@ -280,19 +275,17 @@ def self_test():
         "**Now: 2.2** (`R2`, then `I2`): Second step, wrapped over two lines."
         " Waits for a decision.",
         "",
-        "**Then:** 2.3.1.",
-        "",
-        "### Phase 1 — Old work — CLOSED 2026-01-01",
+        "## Phase 1 — Old work — CLOSED 2026-01-01",
         "",
         "Everything was done.",
         "Twice.",
         "",
-        "### Phase 2 — New work",
+        "## Phase 2 — New work",
         "",
-        "- ☑ **2.1** First step — `I1`, DONE 2026-02-02",
-        "- ☐ **2.2** Second step, wrapped over two lines — `R2`, then `I2`",
-        "- ☐ **2.3** Parent — `M`, EXIT",
-        "  - ◐ **2.3.1** Child — `V`, IN PROGRESS",
+        "- [x] **2.1** First step — DONE 2026-02-02",
+        "- [ ] **2.2** Second step, wrapped over two lines — **R2, then I2**",
+        "- [ ] **2.3** Parent — **M**, EXIT",
+        "    - [ ] **2.3.1** Child — **IN PROGRESS / V**",
     ]) + "\n"
     got = build_board(plan)
     if got != want:

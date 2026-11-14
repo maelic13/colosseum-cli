@@ -1849,7 +1849,7 @@ leaves the table in the commit that finishes it.
 | 12.12 | — |
 | 12.13 | — |
 | 12.14 | — |
-| 12.15 | the maintainer's decisions on its open questions |
+| 12.15 | the maintainer's sign-off on its proposal |
 | 12.16 | — |
 | 12.17 | — |
 | 12.18 | the maintainer wanting the platforms |
@@ -1858,22 +1858,105 @@ leaves the table in the commit that finishes it.
 
 ### Completed phases
 
-| Phase | What it delivered | Evidence |
-|---|---|---|
-| 0 | Current-state audit, Clean Architecture target, ADRs 0001–0008, the one-repository/independent-release model and the Colosseum naming decision | [record](docs/architecture/phases-0-9-record.md), [current-state](docs/architecture/current-state.md), [target](docs/architecture/target-architecture.md), [release architecture](docs/architecture/release-architecture.md), [ADRs](docs/architecture/adr/README.md) |
-| 1 | Pentanomial statistics and normalized Elo in `colosseum-core`, the analytic and external oracle fixture corpus, the hermetic required suite | [record](docs/architecture/phases-0-9-record.md), `tests/fixtures/statistics/` |
-| 2 | Boundary migration (runtime participant, application ports), the independently versioned `colosseum-cli` package, run files, run records, run directories, `self-test`, `status` | [exit](docs/architecture/phase-2-exit.md) |
-| 3 | OS topology adapters, deterministic placement, hard affinity where the OS allows it, `capabilities` | [exit](docs/architecture/phase-3-exit.md) |
-| 4A | Fixed-match runner with explicit clock accounting, fault classification, books and durability | [exit](docs/architecture/phase-4a-exit.md) |
-| 4B | Pair-atomic capped SPRT, oracle replay and live parity against fastchess and cutechess | [exit](docs/architecture/phase-4b-exit.md) |
-| 4C | Optional identical-binary calibration | [exit](docs/architecture/phase-4c-exit.md) |
-| 5 | SPSA kernel, driver, `spsa plan` and `spsa status`, `sprt --apply` | [exit](docs/architecture/phase-5-exit.md) |
-| 6 | `nps`, scaling sweeps, `book` tools, `stats` replay and planning, `suite` | [exit](docs/architecture/phase-6-exit.md) |
-| 7 | Round-robin and gauntlet tournaments with joint or anchored ML ratings | [exit](docs/architecture/phase-7-exit.md) |
-| 8 | Parity repeated on the candidate, ponder adopted, remaining gaps decided | [exit](docs/architecture/phase-8-exit.md), [parity](docs/architecture/phase-8-parity.md), [gaps](docs/architecture/phase-8-gap-decisions.md) |
-| 9 | Naming retained (ADR-0009), versioned `docs/cli/` with a generated reference (ADR-0010), README, candidate bundle, coverage and usability acceptance | [9.4](docs/architecture/phase-9.4-candidate.md), [9.5](docs/architecture/phase-9.5-coverage.md), [9.6](docs/architecture/phase-9.6-usability.md), [9.7](docs/architecture/phase-9.7-release-acceptance.md) |
-| 10 | First-release corrections and release preparation: adjudication off by default, class-aware placement, PGN annotations, final-centre SPSA estimator, graceful stop, fixed rating field, book-range refusal, the slot pool, the arrival-stamped clock model and journal, latency instrument, fault allowance, persistent engines per slot, real-engine qualification and symmetry, the adoption-audit corrections, the unscorable exclusion, the product versions and tag contract, one build entry point, the user documentation, and the acceptance repeat | [record](docs/architecture/phase-10-record.md), [qualification](docs/architecture/phase-10-qualification.md), [parity](docs/architecture/phase-8-parity.md) |
+Each completed phase is a `— CLOSED` heading over the one-paragraph summary
+`GUIDE.md`'s board shows; its steps and evidence are in the records it
+names.
 
+### Phase 0 — Audit and target architecture — CLOSED
+
+Current-state audit, Clean Architecture target, ADRs 0001–0008, the
+one-repository/independent-release model and the Colosseum naming decision
+(0.1–0.8). Evidence: [record](docs/architecture/phases-0-9-record.md),
+[current-state](docs/architecture/current-state.md),
+[target](docs/architecture/target-architecture.md),
+[release architecture](docs/architecture/release-architecture.md),
+[ADRs](docs/architecture/adr/README.md).
+
+### Phase 1 — Statistics core — CLOSED
+
+Pentanomial statistics and normalized Elo in `colosseum-core`, the analytic
+and external oracle fixture corpus, the hermetic required suite (1.1–1.9).
+Evidence: [record](docs/architecture/phases-0-9-record.md),
+`tests/fixtures/statistics/`.
+
+### Phase 2 — Boundaries and the CLI package — CLOSED
+
+Boundary migration (runtime participant, application ports), the
+independently versioned `colosseum-cli` package, run files, run records, run
+directories, `self-test`, `status` (2.1–2.10). Evidence:
+[exit](docs/architecture/phase-2-exit.md).
+
+### Phase 3 — Topology and placement — CLOSED
+
+OS topology adapters, deterministic placement, hard affinity where the OS
+allows it, `capabilities` (3.1–3.8). Evidence:
+[exit](docs/architecture/phase-3-exit.md).
+
+### Phase 4A — Fixed-match runner — CLOSED
+
+Fixed-match runner with explicit clock accounting, typed engine faults,
+books and durability (4A.1–4A.8). Evidence:
+[exit](docs/architecture/phase-4a-exit.md).
+
+### Phase 4B — SPRT and parity — CLOSED
+
+Pair-atomic capped SPRT, oracle replay and live parity against fastchess and
+cutechess (4B.1–4B.6). Evidence: [exit](docs/architecture/phase-4b-exit.md).
+
+### Phase 4C — Calibration — CLOSED
+
+Optional identical-binary calibration (4C.1–4C.3). Evidence:
+[exit](docs/architecture/phase-4c-exit.md).
+
+### Phase 5 — SPSA — CLOSED
+
+SPSA kernel and driver, `spsa plan`, `spsa status`, `sprt --apply`
+(5.1–5.10). Evidence: [exit](docs/architecture/phase-5-exit.md).
+
+### Phase 6 — Measurement tools — CLOSED
+
+`nps` and scaling sweeps, `book` tools, `stats` replay and planning, `suite`
+(6.1–6.9). Evidence: [exit](docs/architecture/phase-6-exit.md).
+
+### Phase 7 — Tournaments — CLOSED
+
+Round-robin and gauntlet tournaments with joint or anchored ML ratings,
+matching the GUI on a frozen fixture (7.1–7.3). Evidence:
+[exit](docs/architecture/phase-7-exit.md).
+
+### Phase 8 — Parity and gap decisions — CLOSED
+
+Parity repeated on the candidate, ponder adopted, remaining gaps decided
+(8.1–8.3). Evidence: [exit](docs/architecture/phase-8-exit.md),
+[parity](docs/architecture/phase-8-parity.md),
+[gaps](docs/architecture/phase-8-gap-decisions.md).
+
+### Phase 9 — Naming, documentation and release acceptance — CLOSED
+
+Naming retained (ADR-0009), versioned `docs/cli/` with a generated reference
+(ADR-0010), README, candidate bundle, coverage and usability acceptance,
+release acceptance of the step 9.7 candidate (9.0–9.7). Evidence:
+[9.4](docs/architecture/phase-9.4-candidate.md),
+[9.5](docs/architecture/phase-9.5-coverage.md),
+[9.6](docs/architecture/phase-9.6-usability.md),
+[9.7](docs/architecture/phase-9.7-release-acceptance.md).
+
+### Phase 10 — First-release corrections — CLOSED
+
+First-release corrections and release preparation (10.1–10.10): adjudication
+off by default, class-aware placement, PGN annotations, the final-centre
+SPSA estimator, graceful stop, the slot pool, the arrival-stamped clock
+model and journal, fault allowance, persistent engines per slot, real-engine
+qualification and symmetry, the adoption-audit corrections, the unscorable
+exclusion, the versions and tag contract, one build entry point, the user
+documentation and the acceptance repeat. 10.9m rejected (the forfeits were
+an engine defect); 10.9h and 10.9p deferred, 10.9t reopened as 12.13;
+10.9g's two maintainer probes owed and not blocking. Evidence:
+[record](docs/architecture/phase-10-record.md),
+[qualification](docs/architecture/phase-10-qualification.md),
+[parity](docs/architecture/phase-8-parity.md).
+
+### Facts from the completed phases
 Facts from those phases that still govern new work:
 
 - The CLI's public contract is S5; the required suite is hermetic (S6.3);
@@ -2570,24 +2653,55 @@ a finite ETA in `spsa status`.
     sibling; the resolved configuration names the policy applied. Tests
     on synthetic topologies; Rarog's 4T/1T ratio near 4 is the field
     check. 10.9h stays deferred.
-  - **12.15 Host load: recorded during the run, and an idle host before
-    it starts — `R2`, then `I2`.** Rarog requests 6 and 10, one sampler.
-    While a run plays, sample each game CPU's busy time outside the run's
-    own engine processes a few times a second, off the game path, and
-    record per game CPU the share of seconds above a threshold in the run
-    record; `results.txt` flags a run whose game CPUs were disturbed beyond
-    a stated limit and names them. Before the first game, an option waits
-    for an idle host with a stated window, threshold and deadline; the run
-    record keeps the reading it started on, and the run gives up at the
-    deadline with a clear message. Rarog also asks, optionally, for a pause
-    between games while the host is busy. Open, settled with the maintainer
-    before code: the threshold and limit defaults, whether a pause between
-    games is offered, and what each platform's adapter measures (Windows
-    first; Linux and macOS an adapter or a stated fallback). Tests: a
-    CPU-bound process started on one game CPU partway through is flagged
-    and named; an undisturbed run is not; a run started beside a busy
-    process waits and starts within seconds of it ending, and gives up at
-    its deadline.
+  - **12.15 Host load: measured and reported, the wait the client's —
+    `R2`, then `I2`.** Rarog requests 6 and 10, one sampler. Proposed
+    2026-11-14 for the maintainer's sign-off. The rule it follows is
+    12.11's: the CLI measures and reports, the client decides. The CLI
+    alone knows the run's game CPUs and has the per-platform adapters, so
+    the measurement is the CLI's. Whether a busy host is worth waiting for
+    is each client's policy, so the wait is an option with defaults, never
+    a fixed rule.
+    - *One sampler.* Each game CPU's busy share outside the run's own
+      engine processes, a few samples a second, off the game path. The
+      game CPUs come from the placement plan, or are every allowed CPU when
+      placement is off. Windows first; Linux and macOS have an adapter or a
+      stated fallback.
+    - *A query.* `colosseum-cli host-load [--window S] [--cpus <list>]
+      [--json]` is read-only. It reads each logical CPU's busy share over
+      the window, and with a run file or command line the game CPUs that
+      run would use. A client can decide before it launches anything, and
+      no client needs its own per-OS sampler.
+    - *The start reading.* Before the first game, every run reads its game
+      CPUs over `--idle-window` (default 3 s, long enough to absorb a
+      desktop application's bursts). It records the reading in the run
+      record and the `--json` output, and prints it when busy, so a start
+      is never unrecorded.
+    - *The wait, the client's.* `--idle-wait S` waits up to `S` seconds for
+      a whole window in which no game CPU is busier than `--idle-threshold`
+      (default 20%) outside the run. `--on-busy start|refuse` decides at
+      the deadline: start with the busy reading recorded and flagged
+      (default), or exit before any game with a documented exit code.
+      Proposed default `--idle-wait 0`, no wait. A default wait would add
+      up to its deadline to every scripted run, test and CI job on a loaded
+      machine without anyone asking for it. Rarog passes, say,
+      `--idle-wait 600 --on-busy refuse`, and the desktop application its
+      own choice.
+    - *During the run.* The run record and `status` keep, per game CPU,
+      the share of seconds above the threshold. A progress block gains a
+      `host` line only while a game CPU is disturbed. `results.txt` flags a
+      run past `--disturbance-limit` (default 5% of the run's seconds on
+      any game CPU) and names the CPUs. There is no pause between games: a
+      run never changes its own pace, so its timing stays comparable.
+    - Run files take the same keys. Like the progress options, none of
+      them is part of the run's identity.
+
+    Open for the sign-off: the defaults above, and above all whether
+    `--idle-wait` defaults to 0. Tests: a CPU-bound process started on one
+    game CPU partway through is flagged and named, and an undisturbed run
+    is not; a run started beside a busy process with `--idle-wait` waits,
+    starts within seconds of the process ending, and with `--on-busy
+    refuse` exits at its deadline having played nothing; `host-load
+    --json` reports a planted busy CPU.
   - **12.16 The clock left on every move — `I1`.** Rarog request 7. The
     mover's clock after the move, in milliseconds, in each PGN move
     comment, with the annotation writer's version bumped. A test asserts
