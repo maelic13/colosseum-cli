@@ -21,6 +21,11 @@ specification; `GUIDE.md` is the ordered implementation tracker.
   build/bench requirements, compiler inspection, or engine-specific logic.
 - Treat existing engine crashes and protocol quirks as real supported input
   conditions. Never hide them by weakening diagnostics or fault classification.
+- Tooling stays platform-independent although development is on Windows:
+  builds, packaging and release checks are `cargo xtask`; any other new tool
+  or script is Python 3 on the standard library, run as `python <path>`.
+  Add no new PowerShell or shell scripts; the existing two are ported to
+  Python when they next need a change.
 
 ## Step and commit discipline
 

@@ -1818,6 +1818,14 @@ never changes the active model by itself.
 | GUI Phases 1–5 | assigned in the GUI repository's `PLAN.md` §G9 (same classes) |
 | 12.1–12.4 | `I1` (completed) |
 | 12.5 | `I1` |
+| 12.6 | `I1` (completed) |
+| 12.7–12.10 | `I1` |
+| 12.11 | `I2` |
+| 12.12 | `R2` for the design, then `I2` |
+| 12.13–12.14 | `I2` |
+| 12.15–12.17 | `I1` |
+| 12.18 | `R2` for the statistic, then `I1` |
+| 12.19 | `M` |
 
 Completed steps keep the class recorded in their phase record.
 
@@ -2336,11 +2344,22 @@ a finite ETA in `spsa status`.
   GUI programme continues and releases them together as 0.6.0, the first
   release through pull-request delivery and plain `v` tags, so the whole
   path — pull request, candidate, tag, publication — is exercised on real
-  work. The intake is the engine projects' request list of 2026-11-13
-  (thirteen requests, kept in the engine repository) plus what the
-  maintainer adds; each request becomes a numbered step here when the
-  maintainer selects it, with its own contract, and none is implemented
-  from the list alone.
+  work. The intake is Rarog's request list,
+  `analysis/colosseum_requests_2026-11-13.md` in the Rarog repository
+  (thirteen requests, each proved from 0.5.0's artifacts), plus what the
+  maintainer adds. All thirteen became steps 12.7–12.19 on 2026-11-14,
+  numbered in the order of work rather than Rarog's; each names its
+  request, and the request's evidence stays in Rarog. The order: four
+  small corrections first, which are also all Rarog's next oracle read
+  (RAR-O09) needs from the CLI; then Rarog's two priorities,
+  moves-per-period clocks and barrier-free SPSA; then the measurement
+  guards; then the reporting conveniences; the release platforms last. A
+  step that changes what an engine receives or how a game is played
+  (12.7, 12.9, 12.11, 12.12, 12.13) repeats the oracle replay and parity
+  checks and says so in the changelog. Which steps ship in 0.6.0 and which
+  in a later minor release is the maintainer's choice; small steps may
+  share one branch and one pull request, a large one (12.11, 12.12, 12.14)
+  has its own.
   - **12.6 The time to an SPSA stop point.** When a tune runs with
     `--stop-after-iteration N` below its total (stop at 2,000 of 6,000
     iterations), every progress report — the console block and its
@@ -2354,6 +2373,110 @@ a finite ETA in `spsa status`.
     `time remaining` and reads `<time>, at iteration N`; `spsa status` takes
     the stop from the latest invocation's run record and reports it as
     `eta.stop_point`.
+  - **12.7 `winc` and `binc` from each side's own control** (request 11,
+    `I1`). The runner's `move_limits` sends the mover's own increment as
+    both `winc` and `binc`, so with a clock per side the engine to move is
+    told its opponent has its own increment; the remaining times are
+    right. Send `winc` from White's control and `binc` from Black's. Equal
+    clocks are unchanged. A test plays 10000+100 against 11270+113 and
+    asserts `winc 100 binc 113` on every `go`, reversed when the colours
+    are.
+  - **12.8 A fixed match's score in `results.txt` and the run record**
+    (request 12, `I1`). `match` writes `official_sample.pentanomial` as
+    five zeros although its checkpoint holds the counts, and `results.txt`
+    has no pentanomial, Elo or nElo line. Fill the run record's counts from
+    the paired sample and add the pentanomial, Elo and nElo with their 95%
+    intervals to `results.txt` as `sprt` reports them. Nothing changes
+    definition. A test asserts the run record's counts equal a recount of
+    the PGN by pair and that `results.txt` carries the figures the
+    progress output printed.
+  - **12.9 An EPD opening keeps its move counters** (request 2, `I1`).
+    `epd_fen_into` keeps an EPD line's four position fields and always
+    appends `0 1`, which shortens a ply-aware engine's thinking on move 1
+    and moves the 50-move rule. Two trailing integers after the four
+    fields and before any opcode are the halfmove clock and the fullmove
+    number; the `hmvc` and `fmvn` opcodes are taken when present;
+    otherwise `0 1`, as now. The resolved configuration records where the
+    counters came from. This changes what every run from such a book
+    plays. A test asserts `… w KQkq - 2 4` reaches the engine as
+    `position fen … 2 4`, and each source and the default.
+  - **12.10 Node-budget compliance in the summary** (request 13, `I1`).
+    With a node budget, `results.txt` and the telemetry give each side's
+    largest reported node count and the number of moves that reported more
+    than that side's budget, so an engine that overshoots or ignores its
+    budget is visible. Tests: a fixture engine that ignores its budget is
+    named with its count of moves over; a compliant run reports none.
+  - **12.11 Moves-per-period time controls** (request 4, `I2`). Per side,
+    N moves in T, repeating, with an optional increment: `go` carries
+    `movestogo` with the moves left in the period, the clock is refilled
+    at each period boundary, and the PGN `TimeControl` tag is written in
+    the standard form (`40/900`). `match`, `sprt`, `tournament`, the
+    gauntlet and run files accept it. It is the one experiment family an
+    engine cannot run through the CLI today. A test at `10/5` asserts
+    `movestogo 10` on each side's first move, `1` on the tenth and the
+    refilled clock on the eleventh.
+  - **12.12 SPSA without an iteration barrier** (request 1, `R2`, then
+    `I2`). Reopens 10.9t ([record](docs/architecture/phase-10-record.md),
+    item (ad)) on Rarog's evidence (RAR-M88): tunes filled 80% of their
+    slots against 98% for matches on the same slots, engine and clock,
+    because an iteration lasts as long as its slowest slot; about 1.24×
+    the games per hour are available. The `R2` part chooses between
+    (ad)'s overlapped iterations (one update stale, applied strictly in
+    order) and a per-pair update as results arrive, and records it.
+    Whatever is chosen keeps exact replay — the journal records for each
+    unit the perturbation it played, the centre it was played at, and the
+    order updates were applied, so Rarog's `spsa_read.py` still rebuilds
+    every centre — resume from the run directory, the gain schedule stated
+    per update (scaled in the run file if the unit changes), and the
+    synchronous mode, unchanged, as an option. (ad)'s fit-quality evidence
+    is required before it becomes the default. Check: under RAR-M88's
+    conditions slot fill above 95% and at least 1.15× its games per hour;
+    a synchronous run identical to 0.5.0's. 10.9p stays deferred behind
+    it.
+  - **12.13 Placement for engines with more than one thread** (request 5,
+    `I2`). An automatic slot holds both SMT siblings of its cores, and
+    Windows packs a four-thread engine onto two or three cores' siblings
+    in it (Rarog's 4T/1T ratio read 2.5–2.7 against 4.03 sibling-free).
+    When any engine in a slot runs more than one thread, `--placement
+    auto` gives the slot one logical CPU per physical core and no
+    sibling; the resolved configuration names the policy applied. Tests
+    on synthetic topologies; Rarog's 4T/1T ratio near 4 is the field
+    check. 10.9h stays deferred.
+  - **12.14 Host load recorded during the run** (request 6, `I2`). While a
+    run plays, sample each game CPU's busy time outside the run's own
+    engine processes a few times a second, off the game path, and record
+    per game CPU the share of seconds above a threshold in the run record;
+    `results.txt` flags a run whose game CPUs were disturbed beyond a
+    stated limit and names them. Each platform has its adapter or a
+    stated fallback. Tests: a CPU-bound process started on one game CPU
+    partway through is flagged and named; an undisturbed run is not.
+  - **12.15 Wait for an idle host before starting** (request 10, `I1`). An
+    option to wait for an idle host before the first game, with a stated
+    window, threshold and deadline, on 12.14's sampler; the run record
+    keeps the reading it started on, and the run gives up at the deadline
+    with a clear message. Tests for both outcomes.
+  - **12.16 The clock left on every move** (request 7, `I1`). The mover's
+    clock after the move, in milliseconds, in each PGN move comment, with
+    the annotation writer's version bumped. A test asserts each move's
+    clock equals that side's previous one minus `t` plus the increment.
+  - **12.17 The conversion read in `results.txt`** (request 8, `I1`). Per
+    engine, the draws and losses after it held at least a minor piece's
+    material advantage for 12 plies, a lone minor excluded, per 1,000
+    games, with the threshold and persistence stated. A test on a
+    committed gauntlet PGN equals Rarog's `tools/diag/conversion_audit.py`.
+  - **12.18 The SPSA checkpoint verdict** (request 9, `R2`, then `I1`).
+    `spsa status` prints the checkpoint verdict of Rarog's per-coordinate
+    gradient test — quiet, live, a centre pushed outward at a bound, or
+    faults — and a run file can register checkpoints, so a tune stops
+    itself at a quiet one and continues on a live one. The statistic must
+    equal `spsa_read.py`'s exactly (shared with Basilisk), with
+    `test_spsa_read.py`'s synthetic cases as committed fixtures. After
+    12.12, because a barrier-free unit changes what an iteration is.
+  - **12.19 Release builds for Linux ARM64 and Intel macOS** (request 3,
+    `M`). `aarch64-unknown-linux-gnu` and `x86_64-apple-darwin` in the
+    release matrix if the maintainer wants those platforms, each asset
+    smoked with `--version` and a short `match`; declaring them supported
+    follows the recurring procedure.
 
 **Exit criterion (b):** each step's tests pass, the command reference is
 regenerated, `CHANGELOG.md` Unreleased names each change, and the run

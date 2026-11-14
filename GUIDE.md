@@ -15,10 +15,10 @@ internal naming or method argumentation.
 |---|---|
 | Branch / versions | `master` holds **CLI 0.5.0** (2026-10-29), the latest release; releases are plain `vX.Y.Z` tags (`v0.1.0`–`v0.5.0` re-tagged from `cli-v`). This repository is CLI-only since the split, 2026-11-14: `maelic13/colosseum-cli`, with the desktop application in `maelic13/colosseum`. Work lands on `master` as one squash pull request per piece; `dev` was the last long-lived branch |
 | What exists | Phases 0–10 complete and published (10.9m rejected; 10.9h, 10.9p, 10.9t deferred). Phase 12.1–12.4 published as CLI 0.2.0; CLI 0.3.0 (engines kept per slot in tournaments), 0.4.0 and 0.5.0 (run, tournament and SPSA reporting) from adoption. GUI v2 decided 2026-09-27 ([ADR-0011](docs/architecture/adr/0011-desktop-application-as-separate-cli-client.md)); 11.1, 11.2 and 11.2.1 done; the swap and this repository's merge done at the split instead of at the end ([ADR-0012](docs/architecture/adr/0012-names-and-repositories-after-the-split.md), *Revision 2026-11-14*) |
-| What is missing | **Phase 12(d)**, the engine projects' requests, released as **CLI 0.6.0** — the first release through pull-request delivery. Then **Phase 11** (11.3 gap analysis and its decisions 11.3.1–11.3.5, the 11.4 protocol specification), **Phase 13** (the protocol, one CLI minor release) and **14.2** (the release pair); 12.5. In the desktop repository: GUI Phases 1–5 |
+| What is missing | **Phase 12(d)**, the engine projects' requests (12.7–12.19, from Rarog's list of 2026-11-13), released as **CLI 0.6.0** and later minors — 0.6.0 the first release through pull-request delivery. Then **Phase 11** (11.3 gap analysis and its decisions 11.3.1–11.3.5, the 11.4 protocol specification), **Phase 13** (the protocol, one CLI minor release) and **14.2** (the release pair); 12.5. In the desktop repository: GUI Phases 1–5 |
 | Validation engines | Two independently developed UCI engines in different languages and build systems. Any two UCI engines would serve; nothing depends on which |
 | Platform status | Windows/Linux/macOS ☑ required debug and optimized CI on every pull request into `master` · Windows x86-64/ARM64, Linux x86-64 and macOS ARM64 release archives ☑ built, packaged and smoked as a candidate on every pull request, exactly as a tag builds them |
-| Next step | The further 0.6.0 requests the maintainer selects, numbered 12.7 onward (12.6 done); then the 0.6.0 release pull request. In the desktop repository: 1.2.0 from `legacy/`, then **1.1.1–1.1.4** and 1.2. 11.3 waits for GUI 1.2 |
+| Next step | **12.7** — `winc` and `binc` from each side's own control — `I1` (Claude Sonnet 5 — Medium), then 12.8–12.10, the other small corrections; then 12.11 and 12.12, Rarog's priorities, each its own pull request; the 0.6.0 release pull request when the maintainer closes its scope. In the desktop repository: 1.2.0 from `legacy/`, then **1.1.1–1.1.4** and 1.2. 11.3 waits for GUI 1.2 |
 | Confirmed decisions | The 2026-09-22 set, confirmed by the maintainer and not reopened, recorded with the release preparation in [`phase-10-record.md`](docs/architecture/phase-10-record.md): exclusion for unspawnable engines, the xtask surface, versions kept in artifact names, the throughput margin not chased. The 2026-09-27 set for GUI v2, in [ADR-0011](docs/architecture/adr/0011-desktop-application-as-separate-cli-client.md) and PLAN §Phase 11: design first; the desktop application a separate repository over a CLI protocol; this repository the CLI alone; 1.x tournaments not migrated; no CLI runs in the GUI; device theme with light and dark; no served dashboard, broadcast and remote control kept possible; front-end technology provisional (TypeScript + React) until measured. The same day's review set, in PLAN §S8 maintainer requirements and §S5.15: placement stays a CLI feature and desktop tournaments run with it off, several at a time; 64 participants the design point; lifecycle and close behaviour analysed at implementation (13.4 / GUI 4.2) with *stop now on close* the starting preference; changed engines and amendments (add, remove, length) are CLI mechanisms decided at 11.3; configuration by run file, a rebuildable index, positions as FEN, two event classes, emission off the game path, a handshake version, short-lived queries, synthetic streams; the shell a measured choice at GUI 2.3; the 1.x engine library imported. The 2026-09-28 naming set, in [ADR-0012](docs/architecture/adr/0012-names-and-repositories-after-the-split.md): Colosseum and `colosseum-cli` kept; the naming risk accepted, both products renamed together if a conflict ever arises; the new application's data directories apart from 1.x's. The 2026-11-14 split set, in ADR-0012's revision: the swap and this repository's merge at the split; plain `v` tags with the `cli-v` releases re-tagged; no bridge release; the 1.x releases deleted here once desktop 1.2.0 is out; the prototype and x64 branches dropped; Rarog's delivery adopted — short-lived branches, one squash pull request each with a short title and description, CI and the release candidate on every pull request; the Rust toolchain pinned (1.100.0), each update its own tested pull request |
 
 ## Current model mapping
@@ -229,6 +229,34 @@ for it, and the GUI tracker says the same the other way.
   synthetic tune stopped at 1, resumed to 3, then to the end asserts the
   `time to stop` line in the block and `run.log` and `eta.stop_point` in
   `spsa status`, and its absence without a stop — PLAN §Phase 12(d)
+- ☐ **12.7** — `I1` — `winc` and `binc` from each side's own control, not
+  the mover's increment for both (Rarog request 11) — PLAN §Phase 12(d)
+- ☐ **12.8** — `I1` — A fixed match's pentanomial in the run record and its
+  pentanomial, Elo and nElo in `results.txt` (Rarog request 12) — PLAN §Phase 12(d)
+- ☐ **12.9** — `I1` — An EPD opening keeps its halfmove and fullmove counters
+  instead of `0 1` (Rarog request 2) — PLAN §Phase 12(d)
+- ☐ **12.10** — `I1` — Node-budget compliance per side in `results.txt` and the
+  telemetry: the largest count and the moves over budget (Rarog request 13) — PLAN §Phase 12(d)
+- ☐ **12.11** — `I2` — Moves-per-period time controls with `movestogo`, clock
+  refills and the standard `TimeControl` tag (Rarog request 4) — PLAN §Phase 12(d)
+- ☐ **12.12** — `R2`, then `I2` — SPSA without an iteration barrier, with exact
+  replay, resume and the synchronous mode kept; reopens 10.9t (Rarog
+  request 1) — PLAN §Phase 12(d)
+- ☐ **12.13** — `I2` — Automatic placement gives a slot with a multi-thread
+  engine one logical CPU per physical core (Rarog request 5) — PLAN §Phase 12(d)
+- ☐ **12.14** — `I2` — Host load on the game CPUs sampled during the run,
+  recorded and flagged (Rarog request 6) — PLAN §Phase 12(d)
+- ☐ **12.15** — `I1` — Wait for an idle host before the first game, with a
+  window, threshold and deadline (Rarog request 10) — PLAN §Phase 12(d)
+- ☐ **12.16** — `I1` — The clock left on every move in the PGN comments (Rarog
+  request 7) — PLAN §Phase 12(d)
+- ☐ **12.17** — `I1` — The conversion read per engine in `results.txt`, equal to
+  Rarog's `conversion_audit.py` (Rarog request 8) — PLAN §Phase 12(d)
+- ☐ **12.18** — `R2`, then `I1` — The SPSA checkpoint verdict in `spsa status` and
+  self-stopping registered checkpoints, equal to `spsa_read.py` (Rarog
+  request 9) — PLAN §Phase 12(d)
+- ☐ **12.19** — `M` — Release archives for Linux ARM64 and Intel macOS, if
+  wanted (Rarog request 3) — PLAN §Phase 12(d)
 
 ### Deferred and post-release (not steps until reopened)
 
@@ -236,8 +264,8 @@ for it, and the GUI tracker says the same the other way.
   IRQ affinity, macOS advisory contract, WSL excluded). Reopens on a Linux
   or macOS placement report, or before CLI 1.0.0 — [record](docs/architecture/phase-10-record.md), item (r)
 - **10.9t** — Overlapped SPSA iterations, `--overlap 1`, off by default.
-  Reopens when a real tune on the released binary shows wall-clock
-  that matters; taken before 10.9p — [record](docs/architecture/phase-10-record.md), item (ad)
+  Reopened as **12.12** on Rarog's RAR-M88 evidence (2026-11-14); taken
+  before 10.9p — [record](docs/architecture/phase-10-record.md), item (ad)
 - **10.9p** — Two games per physical core for `spsa` and `match` only, as a
   measured experiment. Reopens only if 10.9t leaves a margin worth it —
   [record](docs/architecture/phase-10-record.md), item (z)
@@ -306,9 +334,11 @@ in short:
 **The split is done; this repository is the CLI alone.** In order:
 
 1. **CLI 0.6.0** — the engine projects' requests (Phase 12(d)): 12.6 (done),
-   then each request the maintainer selects, on the `engine-requests` branch
-   as one commit each, then the release pull request "Release 0.6.0" and the
-   `v0.6.0` tag. It is also the first full run of the delivery path.
+   then 12.7–12.19 in order. Small steps share a branch and one pull
+   request, one commit each (12.6–12.10 on `engine-requests`); 12.11, 12.12
+   and 12.14 have their own. Then the release pull request "Release 0.6.0"
+   and the `v0.6.0` tag, over the steps the maintainer puts in it. It is
+   also the first full run of the delivery path.
 2. The desktop repository, [`maelic13/colosseum`](https://github.com/maelic13/colosseum),
    tracks its own steps in its `GUIDE.md`: 1.2.0 from `legacy/`, then GUI
    1.1.1–1.1.4 and 1.2. Once 1.2.0 is published, the maintainer deletes the
