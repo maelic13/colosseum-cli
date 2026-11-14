@@ -4,12 +4,12 @@ members = ["crates/*", "tools/docs", "tools/release", "tools/xtask"]
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.100"
 license = "GPL-3.0-or-later"
-repository = "https://github.com/maelic13/colosseum"
+repository = "https://github.com/maelic13/colosseum-cli"
 authors = ["Miloslav Macůrek <macurek.m@gmail.com>"]
 
-# GUI and CLI products own independent versions in their package manifests.
+# The CLI owns its version in crates/colosseum-cli/Cargo.toml.
 
 # ── Release profile ───────────────────────────────────────────────────────────
 # Optimize the shipped binary; engine I/O timing benefits from opt builds.

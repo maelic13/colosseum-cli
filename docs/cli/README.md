@@ -1,10 +1,10 @@
 # Colosseum CLI guide
 
-Colosseum CLI is the independent, headless Colosseum product for chess-engine
-development and reproducible experiments. It consumes ordinary UCI
-executables, records self-contained evidence and provides fixed matches, SPRT,
-SPSA, calibration, NPS/scaling, suites, tournaments, book tools and statistics
-planning/replay.
+Colosseum CLI is a command-line tool for chess-engine development and
+reproducible experiments. It runs ordinary UCI executables, records
+self-contained evidence of every run and provides fixed matches, SPRT, SPSA,
+calibration, NPS and scaling measurements, position suites, tournaments,
+opening-book tools and statistics planning and replay.
 
 Start with an executable path; no manifest or engine-side integration is
 required:

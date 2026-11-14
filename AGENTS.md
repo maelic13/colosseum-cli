@@ -12,15 +12,15 @@ specification; `GUIDE.md` is the ordered implementation tracker.
   documents, ADRs, the Phase 0–9 and Phase 10 records). Do not re-derive or
   re-litigate what they record; extend them when a step adds evidence.
 - Dependencies point inward: domain → nothing outward; application use cases →
-  domain and ports; adapters/drivers implement ports. The CLI and GUI are
-  separate composition roots and must not depend on each other.
-- Preserve working UCI, runner, GUI, persistence, and compatibility behaviour.
+  domain and ports; adapters/drivers implement ports. The CLI is the one
+  composition root; the desktop application lives in its own repository and
+  reaches the CLI only through its process protocol (ADR-0011).
+- Preserve working UCI, runner, persistence, and compatibility behaviour.
   Prefer the smallest boundary refactor that satisfies the target architecture.
 - The CLI accepts ordinary UCI executables. Do not add engine manifests, custom
   build/bench requirements, compiler inspection, or engine-specific logic.
 - Treat existing engine crashes and protocol quirks as real supported input
   conditions. Never hide them by weakening diagnostics or fault classification.
-- Follow `docs/design/GUIDELINES.md` for every GUI change.
 
 ## Step and commit discipline
 
@@ -32,10 +32,10 @@ The maintainer owns every remote operation.
 
 ### Branches and pull requests
 
-- `main` is the trunk; nothing else lives long, and nothing is pushed to it
+- `master` is the trunk; nothing else lives long, and nothing is pushed to it
   directly. Every coherent piece of work — a feature, a fix, a release, or
   one tooling or documentation change — lives on its own short-lived branch
-  from `main` and lands as ONE squash commit through a pull request: no
+  from `master` and lands as ONE squash commit through a pull request: no
   merge commits, no rebase merges. The full procedure, the required checks
   and the release steps are in [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
   *Delivery* and *Releases*.
@@ -43,21 +43,34 @@ The maintainer owns every remote operation.
   coherent change per commit, as below. These commits are working records;
   GitHub keeps them under the pull request (`refs/pull/<n>/head`) after the
   squash, and their subjects may name the step.
-- Before the pull request opens, merge `main` into the branch if `main`
+- Before the pull request opens, merge `master` into the branch if `master`
   moved, so the pull request shows only the branch's own change.
 - The squash message — the pull request's title and description, which is
-  all that reaches `main` — has a fixed shape: a short imperative title that
-  says what changed ("Keep a two-engine run's telemetry per side"; a release
-  is "Colosseum CLI 0.5.0"), with no phase, step or plan references; then a
-  few plain lines on what and why, wrapped at 72 columns; then, after an
-  empty line, the verification, one line each ("Tests: cargo test --workspace
-  --all-targets, 632 passed").
+  all that reaches `master` — is short and simple: an imperative title that
+  says what changed ("Report the time to an SPSA stop"; a release is
+  "Release 0.6.0"), with no phase, step or plan references; then a few plain
+  lines on what and why, wrapped at 72 columns; then, after an empty line,
+  the verification, one line each ("Tests: cargo test --workspace
+  --all-targets, 1,204 passed").
+- The Rust toolchain is pinned in `rust-toolchain.toml`. Never change it as
+  part of other work: a toolchain update is its own pull request, "Rust
+  X.Y.Z", with only the bump and the fixes its new lints need
+  (`docs/DEVELOPMENT.md`, *The toolchain*).
+- A user-visible change adds its entry under `CHANGELOG.md`'s
+  `[Unreleased]` in the commit that makes it, written for users. A release
+  only dates that section.
 
-Use the per-step model assignment in `PLAN.md` §S8, mirrored on the numbered
-`GUIDE.md` item. When asked what comes next, state both the step and its
-recommended model/effort. If a Terra step exposes a material design choice not
-settled by the plan, stop and continue it with Sol High rather than inventing
-the contract. Keep model-label changes synchronized between PLAN and GUIDE.
+`PLAN.md` §S8 records each open step's capability class (`R3`, `R2`, `I2`,
+`I1`, `M`, `V`), mirrored on the numbered `GUIDE.md` item; `GUIDE.md`'s
+"Current model mapping" table is the single maintainer-edited source that
+maps a class to the current Claude model and thinking mode. Whenever
+reporting the next step, name it with its class and recommend the mapped
+model and mode as `Claude: <model> — <mode>` with a brief task-specific
+reason; do not substitute newer models, and never change the active model
+automatically. If an `I1`, `M` or `V` step exposes a material design choice
+not settled by the plan, stop and continue it as `R2` rather than inventing
+the contract; never silently downgrade a recorded class. Keep classes
+synchronized between PLAN and GUIDE.
 
 1. Start from a clean worktree, or identify and preserve pre-existing user
    changes. Never stage unrelated files.
@@ -72,7 +85,7 @@ the contract. Keep model-label changes synchronized between PLAN and GUIDE.
    when it improves the durable specification or records a consequential
    result; do not duplicate routine detail there. Use `☐` for todo and `◐`
    only while genuinely in progress; do not use GitHub `[ ]` task syntax
-   because the Codex renderer does not display it reliably.
+   because not every Markdown renderer displays it reliably.
 6. Commit the completed step before starting another numbered step.
 
 Use a short imperative commit subject that names the outcome, preferably with
@@ -127,5 +140,5 @@ consistency validation; they do not require rerunning unchanged Rust tests.
   argumentation.
 - `docs/DEVELOPMENT.md`: implemented build/test/release facts; update it when
   the workspace or release process actually changes, not merely when planned.
-- `CHANGELOG-GUI.md` and `CHANGELOG-CLI.md`: released user-visible changes for
-  their independently versioned products; root `CHANGELOG.md` is only the index.
+- `CHANGELOG.md`: user-visible changes, `[Unreleased]` first; each release's
+  section is its release notes.

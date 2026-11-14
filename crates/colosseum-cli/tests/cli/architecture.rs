@@ -73,107 +73,115 @@ fn cli_source_has_no_gui_state_or_app_directory_access() {
 }
 
 #[test]
-fn independent_release_lanes_are_complete_and_least_privileged() {
+fn the_release_lane_is_the_only_one_and_is_complete_and_least_privileged() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    assert!(!root.join(".github/workflows/release.yml").exists());
-    let gui = fs::read_to_string(root.join(".github/workflows/release-gui.yml")).unwrap();
-    let cli = fs::read_to_string(root.join(".github/workflows/release-cli.yml")).unwrap();
+    // The desktop application releases from its own repository (ADR-0011).
+    assert!(!root.join(".github/workflows/release-gui.yml").exists());
+    assert!(!root.join(".github/workflows/release-cli.yml").exists());
+    let release = fs::read_to_string(root.join(".github/workflows/release.yml")).unwrap();
 
-    assert!(gui.contains("'gui-v[0-9]+.[0-9]+.[0-9]+*'"));
-    assert!(!gui.contains("'cli-v"));
-    assert!(cli.contains("'cli-v[0-9]+.[0-9]+.[0-9]+'"));
-    assert!(!cli.contains("'gui-v"));
-    // Both lanes build a candidate on every pull request into main and on a
-    // manual dispatch, never on a branch push, and only a tag push of the
-    // lane's own product publishes.
-    for (workflow, name) in [(&gui, "gui"), (&cli, "cli")] {
-        assert!(workflow.contains("workflow_dispatch:"), "{name}");
-        assert!(
-            workflow.contains("  pull_request:\n    branches: [main]\n"),
-            "{name}"
-        );
-        assert!(
-            workflow.contains("  push:\n    tags:\n"),
-            "{name}: a push runs only for a tag"
-        );
-        assert_eq!(workflow.matches("branches:").count(), 1, "{name}");
-        assert!(
-            workflow.contains(&format!(
-                "github.event_name == 'push' && startsWith(github.ref, 'refs/tags/{name}-v')"
-            )),
-            "{name}"
-        );
-    }
+    // Plain `vX.Y.Z` tags publish (ADR-0012); a candidate is built on every
+    // pull request into master and on a manual dispatch, never on a branch
+    // push.
+    assert!(release.contains("  push:\n    tags:\n      - 'v[0-9]+.[0-9]+.[0-9]+'\n"));
+    assert!(!release.contains("'cli-v"));
+    assert!(!release.contains("'gui-v"));
+    assert!(release.contains("workflow_dispatch:"));
+    assert!(release.contains("  pull_request:\n    branches: [master]\n"));
+    assert_eq!(release.matches("branches:").count(), 1);
+    assert!(
+        release.contains("github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')")
+    );
+    assert!(!release.contains("origin/main"));
 
-    // Each lane builds, packages and smokes exactly its own product, through
-    // the one build entry point, and never reaches across to the other's.
-    assert!(cli.contains("cargo xtask package cli"));
-    assert!(!cli.contains("xtask package gui"));
-    assert!(gui.contains("cargo xtask package gui"));
-    assert!(!gui.contains("xtask package cli"));
+    // The lane builds, packages and smokes the product through the one build
+    // entry point.
+    assert!(release.contains("cargo xtask package cli"));
+    // The release is titled with the product name and the bare version
+    // ("Colosseum CLI 0.6.0"); the tag alone carries the `v`.
+    assert!(
+        release.contains("          name: Colosseum CLI ${{ needs.prepare.outputs.version }}\n")
+    );
 
-    for (workflow, name) in [(&gui, "gui"), (&cli, "cli")] {
-        assert!(
-            workflow.contains("permissions:\n  contents: read"),
-            "{name}"
-        );
-        assert_eq!(workflow.matches("contents: write").count(), 1, "{name}");
-        // A candidate proves the whole lane without a tag or a release.
-        assert!(workflow.contains("workflow_dispatch:"), "{name}");
-        assert!(workflow.contains("CANDIDATE.json"), "{name}");
-        // The published set is an exact list checked by name and by count, so
-        // a release carries what its matrix produced and nothing else.
-        assert!(workflow.contains("expected=("), "{name}");
-        assert!(
-            workflow.contains(
-                r#"for file in "${expected[@]}"; do test -f "release-artifacts/$file"; done"#
-            ),
-            "{name}"
-        );
-        assert!(
-            workflow.contains("(cd release-artifacts && sha256sum --check SHA256SUMS)"),
-            "{name}"
-        );
-        // Checksums are generated and re-checked, never published as an asset.
-        assert!(
-            !workflow.contains("release-artifacts/SHA256SUMS\n"),
-            "{name}"
-        );
+    assert!(release.contains("permissions:\n  contents: read"));
+    assert_eq!(release.matches("contents: write").count(), 1);
+    // A candidate proves the whole lane without a tag or a release.
+    assert!(release.contains("CANDIDATE.json"));
+    // The published set is an exact list checked by name and by count, so a
+    // release carries what its matrix produced and nothing else.
+    assert!(release.contains("expected=("));
+    assert!(
+        release.contains(
+            r#"for file in "${expected[@]}"; do test -f "release-artifacts/$file"; done"#
+        )
+    );
+    assert!(release.contains("(cd release-artifacts && sha256sum --check SHA256SUMS)"));
+    // Checksums are generated and re-checked, never published as an asset.
+    assert!(!release.contains("release-artifacts/SHA256SUMS\n"));
+}
+
+/// One compiler for every build: `rust-toolchain.toml` pins an exact
+/// release, no workflow installs a floating one, and the manifest's
+/// `rust-version` names the same release, so a bump is one deliberate change.
+#[test]
+fn every_build_uses_the_pinned_toolchain() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let toolchain = fs::read_to_string(root.join("rust-toolchain.toml")).unwrap();
+    let channel = toolchain
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("channel = "))
+        .expect("rust-toolchain.toml names a channel")
+        .trim_matches('"');
+    let parts: Vec<&str> = channel.split('.').collect();
+    assert!(
+        parts.len() == 3 && parts.iter().all(|part| part.parse::<u32>().is_ok()),
+        "the channel is an exact release, not {channel}"
+    );
+
+    let manifest = fs::read_to_string(root.join("Cargo.toml")).unwrap();
+    assert!(
+        manifest.contains(&format!("rust-version = \"{}.{}\"", parts[0], parts[1])),
+        "the workspace rust-version matches the pinned {channel}"
+    );
+
+    for workflow in ["ci.yml", "release.yml"] {
+        let text = fs::read_to_string(root.join(".github/workflows").join(workflow)).unwrap();
+        assert!(!text.contains("rust-toolchain@"), "{workflow}");
+        assert!(!text.contains("toolchain: stable"), "{workflow}");
+        assert!(text.contains("rustup show active-toolchain"), "{workflow}");
     }
 }
 
 #[test]
-fn repository_latest_release_is_owned_by_the_gui_product_lane() {
+fn ci_gates_pull_requests_into_master() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let gui = fs::read_to_string(root.join(".github/workflows/release-gui.yml")).unwrap();
-    let cli = fs::read_to_string(root.join(".github/workflows/release-cli.yml")).unwrap();
-
-    // GitHub keeps exactly one repository-wide "latest" release. Leaving it to
-    // chance lets a CLI tag displace the GUI download the front page offers.
-    assert!(
-        cli.contains("\n          make_latest: false\n"),
-        "CLI release lane must never claim the repository-wide latest release"
-    );
-    assert!(
-        gui.contains(
-            "\n          make_latest: ${{ needs.validate.outputs.prerelease == 'true' && 'false' || 'true' }}\n"
-        ),
-        "GUI release lane must claim latest for a stable release and never for a prerelease"
-    );
-    for workflow in [&gui, &cli] {
-        assert_eq!(workflow.matches("make_latest:").count(), 1);
-    }
+    let ci = fs::read_to_string(root.join(".github/workflows/ci.yml")).unwrap();
+    assert!(ci.contains("  pull_request:\n    branches: [master]\n"));
+    assert!(ci.contains("workflow_dispatch:"));
+    assert!(!ci.contains("  push:"));
+    assert!(ci.contains("name: CI complete"));
 }
 
 #[test]
-fn user_facing_documentation_links_product_tag_lists_not_repository_latest() {
+fn only_a_release_from_master_claims_latest() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let release = fs::read_to_string(root.join(".github/workflows/release.yml")).unwrap();
+
+    // The repository holds only CLI releases, so a release from master is
+    // the latest; a patch tagged on an older line must not displace it.
+    assert!(release.contains("\n          make_latest: ${{ steps.line.outputs.latest }}\n"));
+    assert_eq!(release.matches("make_latest:").count(), 1);
+    assert!(release.contains("echo \"latest=true\" >> \"$GITHUB_OUTPUT\""));
+    assert!(release.contains("echo \"latest=false\" >> \"$GITHUB_OUTPUT\""));
+}
+
+#[test]
+fn user_facing_documentation_links_this_repository() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut documents = vec![
         root.join("README.md"),
         root.join("packaging/cli/README.md"),
         root.join("CHANGELOG.md"),
-        root.join("CHANGELOG-CLI.md"),
-        root.join("CHANGELOG-GUI.md"),
     ];
     documents.extend(
         fs::read_dir(root.join("docs/cli"))
@@ -183,18 +191,21 @@ fn user_facing_documentation_links_product_tag_lists_not_repository_latest() {
 
     for document in documents {
         let text = fs::read_to_string(&document).unwrap();
-        assert!(
-            !text.contains("/releases/latest"),
-            "{} links the repository-wide latest release",
-            document.display()
-        );
-        // An unfiltered release list mixes both products; product pages link a
-        // tag-filtered list instead.
-        assert!(
-            !text.contains("colosseum/releases)") && !text.contains("colosseum/releases>"),
-            "{} links the unscoped repository release list",
-            document.display()
-        );
+        // `maelic13/colosseum` is the desktop application's repository since
+        // the swap (ADR-0012): it may be named, but the CLI's releases,
+        // issues, sources and clone address are `maelic13/colosseum-cli`.
+        for old in [
+            "github.com/maelic13/colosseum/releases",
+            "github.com/maelic13/colosseum/issues",
+            "github.com/maelic13/colosseum/blob",
+            "github.com/maelic13/colosseum/tree",
+            "github.com/maelic13/colosseum.git",
+            "github.com/maelic13/colosseum#readme",
+            "github.com/maelic13/colosseum-gui",
+            "tag%3Acli-v",
+        ] {
+            assert!(!text.contains(old), "{} links {old}", document.display());
+        }
     }
 }
 

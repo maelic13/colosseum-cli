@@ -1,23 +1,19 @@
 # Colosseum CLI
 
-Colosseum CLI is an independent, headless tool for testing ordinary UCI chess
-engines. It provides reproducible fixed matches, pair-based SPRT, SPSA tuning,
-calibration, NPS and scaling measurements, position suites, tournaments,
-opening-book utilities and statistics analysis.
+Colosseum CLI is a command-line tool for chess-engine development. It plays
+fixed matches, tells you with an SPRT when a change has made an engine
+stronger or weaker, tunes engine parameters with SPSA, measures search speed,
+and runs round robins and gauntlets. It works with any ordinary UCI engine:
+give it an executable, and it needs no manifest, build integration or source
+access.
 
-Engines need only implement UCI. They do not need a Colosseum manifest,
-custom build command or source-tree integration.
-
-It is one of two Colosseum products. The other, the Colosseum desktop
-application, runs and shows engine tournaments; it is versioned and released
-separately and is not part of this archive. The
-[project page](https://github.com/maelic13/colosseum#readme) introduces both.
+Looking for a desktop application? [Colosseum](https://github.com/maelic13/colosseum)
+is a separate program for running and watching engine tournaments; it is not
+part of this archive.
 
 ## Start here
 
-Download the archive for your platform from the
-[Colosseum CLI release list](https://github.com/maelic13/colosseum/releases?q=tag%3Acli-v),
-extract it, and check the installation:
+Check the executable and an engine:
 
 ```text
 colosseum-cli --version
@@ -28,29 +24,30 @@ colosseum-cli engine check ./my-engine
 On Windows, run `colosseum-cli.exe`. On Linux and macOS, run
 `./colosseum-cli` if the current directory is not on your `PATH`.
 
-Run a first book-free fixed match with:
+Play a first fixed match at 100 ms a move:
 
 ```text
 colosseum-cli match ./candidate ./baseline --games 100 --a-movetime-ms 100 --b-movetime-ms 100
 ```
 
-Colosseum writes self-contained evidence under `./colosseum-runs/` by default.
-Use `--dir <path>` on durable workflows when you want an explicit resumable
-run directory.
+Every run writes a self-contained directory under `./colosseum-runs/`, or
+where `--dir <path>` says. Stop a long run with one Ctrl+C and start the same
+command again to resume it.
 
 ## Documentation
 
-- [Complete CLI guide](docs/cli/README.md)
+This archive holds the guide for this exact version, for offline use:
+
 - [Quickstart](docs/cli/quickstart.md)
-- [Generated command reference](docs/cli/command-reference.md)
+- [Complete guide](docs/cli/README.md), with a page per command
+- [Command reference](docs/cli/command-reference.md)
 - [How to trust and report a result](docs/cli/trust-results.md)
-- [Engine compatibility and failure behavior](docs/cli/compatibility.md)
-- [CLI changelog](CHANGELOG-CLI.md)
+- [What the CLI needs from an engine](docs/cli/compatibility.md)
+- [Changelog](CHANGELOG.md)
 
-Every release archive includes these exact version-matched documents for
-offline use. The executable also provides command-specific help, for example
-`colosseum-cli sprt --help`.
+`colosseum-cli <command> --help` lists every option of a command.
 
-Report problems through the
-[GitHub issue tracker](https://github.com/maelic13/colosseum/issues).
-Colosseum is licensed under the [GNU GPL v3 or later](LICENSE).
+Newer versions are on the
+[release page](https://github.com/maelic13/colosseum-cli/releases). Report
+problems through the [issue tracker](https://github.com/maelic13/colosseum-cli/issues).
+Colosseum CLI is licensed under the [GNU GPL v3 or later](LICENSE).

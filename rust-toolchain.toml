@@ -1,0 +1,24 @@
+# The pinned Rust toolchain.
+#
+# Every build of this repository uses exactly this compiler: a local build,
+# CI, and the release workflow that builds the published archives. A
+# released archive is therefore rebuildable from its tag, and a run timed
+# with one build is comparable with the next: a compiler change can move
+# engine-facing timing and the clock accounting, so it is a dated, tested
+# change, never a side effect of `rustup update`.
+#
+# This does not freeze the machine. `rustup update` still updates the global
+# toolchain and every other project; this repository waits for a deliberate
+# bump of the line below, and rustup downloads it on the next build.
+#
+# Bumping it is its own pull request and nothing else (docs/DEVELOPMENT.md,
+# "The toolchain"): change `channel`, make the new lints pass, and let CI and
+# the release candidate prove it on every platform.
+[toolchain]
+channel = "1.100.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
+
+# Deliberately no `targets` list: every runner reads this file, and a
+# cross-target listed here would make all of them download a std they never
+# use. The release workflow adds each archive's target where it builds it.

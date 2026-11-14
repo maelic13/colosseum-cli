@@ -1,20 +1,20 @@
 # CI — the hermetic workspace on every supported OS, debug and optimized.
 #
-# This is the mandatory gate into main. It runs on a pull request into main,
-# where GitHub builds the merge commit, so the run tests exactly what main
-# would become, and on manual dispatch for any branch. It does not run on
-# pushes: a push to main only ever lands a pull request that already passed.
-# A newer commit to the same pull request cancels the superseded run.
+# This is the mandatory gate into master. It runs on a pull request into
+# master, where GitHub builds the merge commit, so the run tests exactly what
+# master would become, and on manual dispatch for any branch. It does not run
+# on pushes: a push to master only ever lands a pull request that already
+# passed. A newer commit to the same pull request cancels the superseded run.
 #
-# The release workflows (release-cli.yml, release-gui.yml) run beside it on
-# the same pull request and build every release artifact as a candidate, so a
-# pull request green in all three is one the tag will release.
+# The release workflow (release.yml) runs beside it on the same pull request
+# and builds every release artifact as a candidate, so a pull request green in
+# both is one the tag will release.
 
 name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 concurrency:
@@ -40,17 +40,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      # eframe/egui needs GTK + XCB headers on Linux.
-      - name: Install Linux GUI dependencies
-        timeout-minutes: 10
+      # No toolchain action: rustup reads rust-toolchain.toml and installs the
+      # pinned compiler, so CI builds with exactly the developer's rustc.
+      - name: Show pinned toolchain
+        shell: bash
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y \
-            libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev \
-            libxcb-xfixes0-dev libxkbcommon-dev libssl-dev
+          rustup show active-toolchain
+          rustc -vV
 
       - uses: Swatinem/rust-cache@v2
 
@@ -83,17 +79,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Linux GUI dependencies
-        if: runner.os == 'Linux'
-        timeout-minutes: 10
+      # No toolchain action: rustup reads rust-toolchain.toml and installs the
+      # pinned compiler, so CI builds with exactly the developer's rustc.
+      - name: Show pinned toolchain
+        shell: bash
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y \
-            libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev \
-            libxcb-xfixes0-dev libxkbcommon-dev libssl-dev
+          rustup show active-toolchain
+          rustc -vV
 
       # Both matrix legs of one OS are the same job, so without this they share
       # a cache key: they race to save it, the loser never saves, and every run

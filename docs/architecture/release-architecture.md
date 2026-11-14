@@ -1,5 +1,11 @@
 # Independent release and CI architecture
 
+> **Historical.** Since the split (2026-11-14, ADR-0012's revision) this
+> repository releases the CLI alone, on plain `vX.Y.Z` tags through
+> `release.yml`; [`docs/DEVELOPMENT.md`](../DEVELOPMENT.md) *Delivery* and
+> *Releases* is the current process. The design below is kept as the record
+> of the two-product period.
+
 This document is the design artifact for GUIDE step 0.5. It applies the
 independence contract in PLAN §S4 to the actual version, workflow, packaging and
 documentation surfaces recorded by the Phase-0 inventory. ADR-0006 accepts one

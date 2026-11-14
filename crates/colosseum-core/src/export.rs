@@ -1,13 +1,13 @@
 //! Tabular export of tournament results as RFC-4180 CSV.
 //!
-//! Pure string builders with no I/O so they are trivially testable and reusable
-//! from both the live Tournament view and the History tab. The GUI fills in
-//! [`ExportRow`]s (already joined with engine names / Elo) and picks the file.
+//! Pure string builders with no I/O, so they are trivially testable. A
+//! tournament fills in [`ExportRow`]s (already joined with engine names and
+//! ratings) and its run directory keeps the result.
 
 use crate::ids::EngineId;
 use crate::standings::Standings;
 
-/// A fully-resolved standings row, mirroring the GUI results table.
+/// A fully-resolved standings row.
 #[derive(Debug, Clone)]
 pub struct ExportRow {
     pub rank: usize,

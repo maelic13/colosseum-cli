@@ -1,35 +1,36 @@
-name: Colosseum CLI candidate and release
-run-name: CLI ${{ github.ref_type == 'tag' && github.ref_name || format('candidate {0}', github.sha) }}
+name: Release
+run-name: ${{ github.ref_type == 'tag' && github.ref_name || format('release candidate {0}', github.sha) }}
 
-# A release is cut by pushing a `cli-vX.Y.Z` tag on main, or, for a patch
-# while main holds unreleased work, on a branch cut from the `cli-vX.Y.0`
+# A release is cut by pushing a `vX.Y.Z` tag on master, or, for a patch
+# while master holds unreleased work, on a branch cut from the `vX.Y.0`
 # release; nothing else creates one. The tag run validates first (the tag
 # names the version crates/colosseum-cli/Cargo.toml declares and
-# CHANGELOG-CLI.md has a dated section for it), builds, packages and smokes
+# CHANGELOG.md has a dated section for it), builds, packages and smokes
 # every archive read-only, and only then one job with write permission
 # publishes the release with every archive and the notes taken from that
 # changelog section. Nothing exists on GitHub until every cell has passed, so
-# a failed run is repaired by deleting the tag, fixing main and tagging again.
+# a failed run is repaired by deleting the tag, fixing master and tagging
+# again.
 #
-# A pull request into main runs the same build, package and smoke as a
-# candidate, so a green pull request is a releasable one. When the CLI's
-# version is a plain X.Y.Z that has no tag yet, the pull request proposes that
-# release, and the candidate also runs the release check (all but the tag
-# itself and the commit on main). A manual dispatch does the same on a chosen
-# ref, the rehearsal. Neither creates a tag or a release.
+# A pull request into master runs the same build, package and smoke as a
+# candidate, so a green pull request is a releasable one. When the version is
+# a plain X.Y.Z that has no tag yet, the pull request proposes that release,
+# and the candidate also runs the release check (all but the tag itself and
+# the commit on master). A manual dispatch does the same on a chosen ref, the
+# rehearsal. Neither creates a tag or a release.
 
 on:
   push:
     tags:
-      - 'cli-v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
   pull_request:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 # A newer commit on the same pull request supersedes its candidate build; tag
 # and dispatch runs are never cancelled.
 concurrency:
-  group: release-cli-${{ github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -58,14 +59,19 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      # No toolchain action: rustup reads rust-toolchain.toml and installs the
+      # pinned compiler, so CI builds with exactly the developer's rustc.
+      - name: Show pinned toolchain
+        shell: bash
+        run: |
+          rustup show active-toolchain
+          rustc -vV
 
       - uses: Swatinem/rust-cache@v2
         with:
-          key: release-cli-metadata
+          key: release-metadata
 
-      - name: Validate version and release ownership
+      - name: Validate the version and the changelog
         id: metadata
         shell: bash
         run: |
@@ -77,7 +83,7 @@ jobs:
             metadata="$(cargo run --locked -q -p colosseum-release -- candidate cli)"
             mode=candidate
             version="$(jq -r .version <<<"$metadata")"
-            tag="cli-v$version"
+            tag="v$version"
             # A plain version not tagged yet is a release proposal: it passes
             # every check the tag run makes before it builds.
             if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
@@ -87,7 +93,6 @@ jobs:
               echo "candidate of $version; nothing is proposed for release"
             fi
           fi
-          test "$(jq -r .product <<<"$metadata")" = cli
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "version=$(jq -r .version <<<"$metadata")" >> "$GITHUB_OUTPUT"
           echo "source_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
@@ -134,19 +139,25 @@ jobs:
           ref: ${{ needs.prepare.outputs.source_sha }}
           persist-credentials: false
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+      # No toolchain action: rustup reads rust-toolchain.toml and installs the
+      # pinned compiler, so CI builds with exactly the developer's rustc.
+      - name: Show pinned toolchain
+        shell: bash
+        run: |
+          rustup show active-toolchain
+          rustc -vV
+
+      - name: Install the archive's Rust target
+        run: rustup target add ${{ matrix.target }}
 
       - uses: Swatinem/rust-cache@v2
         with:
-          key: release-cli-${{ matrix.target }}
+          key: release-${{ matrix.target }}
 
       # One entry point: the same command a maintainer runs locally builds the
       # product, stages the allowlisted contents, writes the archive to
       # target/dist/ and reads it back with the archive smoke script.
-      - name: Build, package and smoke the headless CLI product
+      - name: Build, package and smoke the archive
         run: cargo xtask package cli --target ${{ matrix.target }}
 
       - name: Upload exact platform archive
@@ -161,7 +172,7 @@ jobs:
   # It always runs and fails unless every job it needs succeeded, because a
   # job skipped after a failed dependency reports as passing.
   collect:
-    name: Verify the complete CLI matrix
+    name: Verify the complete matrix
     needs: [prepare, build]
     if: ${{ always() }}
     runs-on: ubuntu-latest
@@ -219,11 +230,14 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Install Rust toolchain
+      - name: Show pinned toolchain
         if: needs.prepare.outputs.mode == 'release'
-        uses: dtolnay/rust-toolchain@stable
+        shell: bash
+        run: |
+          rustup show active-toolchain
+          rustc -vV
 
-      - name: Add product-owned release notes to the stable bundle
+      - name: Add the release notes to the stable bundle
         if: needs.prepare.outputs.mode == 'release'
         run: cargo run --locked -q -p colosseum-release -- notes "$GITHUB_REF_NAME" release-artifacts/RELEASE-NOTES.md
 
@@ -239,7 +253,7 @@ jobs:
   # ---- Publish: a tag push only, after every check has passed ----------------
   publish:
     name: Publish stable release
-    if: needs.prepare.outputs.mode == 'release' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/cli-v')
+    if: needs.prepare.outputs.mode == 'release' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [prepare, collect]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -252,22 +266,25 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # On main, or on a patch line: a commit descending from this minor's
-      # `cli-vX.Y.0`, which is itself on main.
-      - name: Prove the tagged commit is on main or its patch line
+      # On master, or on a patch line: a commit descending from this minor's
+      # `vX.Y.0`, which is itself on master.
+      - name: Prove the tagged commit is on master or its patch line
+        id: line
         shell: bash
         run: |
           set -euo pipefail
           sha='${{ needs.prepare.outputs.source_sha }}'
-          git fetch -q origin main
-          if git merge-base --is-ancestor "$sha" origin/main; then
-            echo "$GITHUB_REF_NAME is on main"; exit 0
+          git fetch -q origin master
+          if git merge-base --is-ancestor "$sha" origin/master; then
+            echo "$GITHUB_REF_NAME is on master"
+            echo "latest=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          base="$(sed -E 's/^(cli-v[0-9]+\.[0-9]+)\.[0-9]+$/\1.0/' <<<"$GITHUB_REF_NAME")"
-          git rev-parse -q --verify "refs/tags/$base" >/dev/null || { echo "::error::$GITHUB_REF_NAME is not on main and $base does not exist"; exit 1; }
-          git merge-base --is-ancestor "$base" origin/main || { echo "::error::$base is not on main"; exit 1; }
+          base="$(sed -E 's/^(v[0-9]+\.[0-9]+)\.[0-9]+$/\1.0/' <<<"$GITHUB_REF_NAME")"
+          git rev-parse -q --verify "refs/tags/$base" >/dev/null || { echo "::error::$GITHUB_REF_NAME is not on master and $base does not exist"; exit 1; }
+          git merge-base --is-ancestor "$base" origin/master || { echo "::error::$base is not on master"; exit 1; }
           git merge-base --is-ancestor "$base" "$sha" || { echo "::error::$GITHUB_REF_NAME does not descend from $base"; exit 1; }
           echo "$GITHUB_REF_NAME is on the $base patch line"
+          echo "latest=false" >> "$GITHUB_OUTPUT"
 
       - name: Download the verified stable bundle
         uses: actions/download-artifact@v8
@@ -278,15 +295,14 @@ jobs:
       - name: Recheck downloaded archive checksums
         run: cd release-artifacts && sha256sum --check SHA256SUMS
 
-      - name: Publish the product-scoped GitHub Release
+      - name: Publish the GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          name: Colosseum CLI v${{ needs.prepare.outputs.version }}
+          name: Colosseum CLI ${{ needs.prepare.outputs.version }}
           body_path: release-artifacts/RELEASE-NOTES.md
-          # GitHub keeps one repository-wide "latest" release for both products.
-          # The CLI never claims it, so a CLI tag cannot displace the GUI
-          # download the repository front page offers.
-          make_latest: false
+          # A stable release from master is the repository's latest; a patch
+          # tagged on an older line is not.
+          make_latest: ${{ steps.line.outputs.latest }}
           # SHA256SUMS is generated and re-checked between jobs, but not
           # published: a checksum file beside the archives it describes proves
           # nothing an attacker who can replace one cannot also replace. The

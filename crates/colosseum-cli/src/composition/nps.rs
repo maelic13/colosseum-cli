@@ -474,16 +474,11 @@ pub(crate) async fn run_nps_scaling(
     };
     let mut path_pointers = Vec::new();
     for (job, scaling_job) in jobs.iter().enumerate() {
-        for participant in 0..2 {
+        for (participant, side) in scaling_job.participants.iter().enumerate().take(2) {
             path_pointers.push(format!(
                 "/jobs/{job}/participants/{participant}/participant/launch/executable"
             ));
-            if scaling_job.participants[participant]
-                .participant
-                .launch
-                .working_directory
-                .is_some()
-            {
+            if side.participant.launch.working_directory.is_some() {
                 path_pointers.push(format!(
                     "/jobs/{job}/participants/{participant}/participant/launch/working_directory"
                 ));
