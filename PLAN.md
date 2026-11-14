@@ -1843,6 +1843,7 @@ leaves the table in the commit that finishes it.
 |---|---|
 | 12.7 | — |
 | 12.8 | — |
+| 12.5 | — |
 | 12.9 | — |
 | 12.10 | — |
 | 12.11 | — |
@@ -1853,7 +1854,6 @@ leaves the table in the commit that finishes it.
 | 12.16 | — |
 | 12.17 | — |
 | 12.18 | the maintainer wanting the platforms |
-| 12.5 | — |
 | 11.3 | GUI 1.2 signed off |
 
 ### Completed phases
@@ -2452,7 +2452,9 @@ a finite ETA in `spsa status`.
     to the standard start position when a game's start FEN does not parse,
     while the engines are still sent that FEN. Books are validated at load,
     so no run reaches it today; the fallback becomes an error naming the
-    game and the FEN. A test hands the runner an invalid FEN.
+    game and the FEN. A test hands the runner an invalid FEN. Taken
+    before 12.9, which changes how a start position is read, so a
+    mistake there is an error, not a game from the standard position.
 - **(d) Requests from the maintainer's engine projects, for CLI 0.6.0**
   (12.6 onward), 2026-11-14. The maintainer takes these before the GUI
   programme continues and releases them as 0.6.0 and the minor releases
