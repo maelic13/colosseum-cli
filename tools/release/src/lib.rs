@@ -29,7 +29,7 @@ struct Product {
 
 #[derive(Debug, Error)]
 pub enum MetadataError {
-    #[error("tag must start with cli-v")]
+    #[error("tag must be vX.Y.Z")]
     TagPrefix,
     #[error("invalid release semantic version: {0}")]
     Semver(#[from] semver::Error),
@@ -58,6 +58,13 @@ pub enum MetadataError {
         changelog: &'static str,
         version: Version,
     },
+    #[error(
+        "{changelog}'s heading for {version} is not dated: write `## [{version}] — YYYY-MM-DD`"
+    )]
+    UndatedNotes {
+        changelog: &'static str,
+        version: Version,
+    },
     #[error("product must be cli")]
     Product,
     #[error("invalid CLI artifact platform/architecture pair: {platform}/{arch}")]
@@ -76,7 +83,7 @@ pub enum MetadataError {
 }
 
 pub fn validate(root: &Path, tag: &str) -> Result<ReleaseMetadata, MetadataError> {
-    let Some(raw_version) = tag.strip_prefix("cli-v") else {
+    let Some(raw_version) = tag.strip_prefix('v') else {
         return Err(MetadataError::TagPrefix);
     };
     let product = product("cli")?;
@@ -99,8 +106,20 @@ pub fn validate(root: &Path, tag: &str) -> Result<ReleaseMetadata, MetadataError
 
     let heading = format!("## [{}]", version);
     let notes = read(root, product.changelog)?;
-    if !notes.lines().any(|line| line.trim().starts_with(&heading)) {
+    let Some(line) = notes
+        .lines()
+        .map(str::trim)
+        .find(|line| line.starts_with(&heading))
+    else {
         return Err(MetadataError::MissingNotes {
+            changelog: product.changelog,
+            version,
+        });
+    };
+    // A release's section is dated in the commit that is tagged, so the
+    // notes a release publishes say when it was cut.
+    if !is_dated(&line[heading.len()..]) {
+        return Err(MetadataError::UndatedNotes {
             changelog: product.changelog,
             version,
         });
@@ -109,18 +128,36 @@ pub fn validate(root: &Path, tag: &str) -> Result<ReleaseMetadata, MetadataError
     Ok(metadata(product, version, tag.to_owned(), "release"))
 }
 
+/// Whether what follows a release heading's `## [X.Y.Z]` is ` — YYYY-MM-DD`
+/// (an em dash or a hyphen).
+fn is_dated(rest: &str) -> bool {
+    let rest = rest.trim_start();
+    let Some(date) = rest
+        .strip_prefix('—')
+        .or_else(|| rest.strip_prefix('-'))
+        .map(str::trim)
+    else {
+        return false;
+    };
+    let bytes = date.as_bytes();
+    bytes.len() == 10
+        && bytes.iter().enumerate().all(|(index, byte)| match index {
+            4 | 7 => *byte == b'-',
+            _ => byte.is_ascii_digit(),
+        })
+}
+
 /// Validate the package-owned version for an immutable, unpublished candidate.
 ///
 /// Candidates deliberately do not require final changelog headings or tags.
 /// They are workflow artifacts tied to a commit SHA, never GitHub Releases.
+/// A development version between releases (`X.Y.Z-dev`) is a candidate like
+/// any other, for either product; only a tag refuses a CLI prerelease.
 pub fn candidate(root: &Path, name: &str) -> Result<ReleaseMetadata, MetadataError> {
     let product = product(name)?;
     let version = Version::parse(&package_version(root, product)?)?;
     if !version.build.is_empty() {
         return Err(MetadataError::BuildMetadata);
-    }
-    if product.name == "cli" && !version.pre.is_empty() {
-        return Err(MetadataError::CliPrerelease);
     }
     let proposed_tag = format!("{}{}", product.tag_prefix, version);
     Ok(metadata(product, version, proposed_tag, "candidate"))
@@ -228,10 +265,7 @@ pub fn stage_cli(
         &root.join("packaging/cli/README.md"),
         &stage.join("README.md"),
     )?;
-    copy(
-        &root.join("CHANGELOG-CLI.md"),
-        &stage.join("CHANGELOG-CLI.md"),
-    )?;
+    copy(&root.join("CHANGELOG.md"), &stage.join("CHANGELOG.md"))?;
     copy_tree(&root.join("docs/cli"), &stage.join("docs/cli"))?;
     Ok(stage)
 }
@@ -260,9 +294,9 @@ fn product(name: &str) -> Result<Product, MetadataError> {
             name: "cli",
             package: "colosseum-cli",
             manifest: "crates/colosseum-cli/Cargo.toml",
-            changelog: "CHANGELOG-CLI.md",
+            changelog: "CHANGELOG.md",
             artifact_name: "colosseum-cli",
-            tag_prefix: "cli-v",
+            tag_prefix: "v",
         }),
         _ => Err(MetadataError::Product),
     }
@@ -334,15 +368,19 @@ mod tests {
             "[package]\nname = \"colosseum-cli\"\nversion = \"1.2.3\"\n",
         )
         .unwrap();
-        fs::write(root.path().join("CHANGELOG-CLI.md"), "## [1.2.3]\n").unwrap();
+        fs::write(
+            root.path().join("CHANGELOG.md"),
+            "## [1.2.3] - 2026-01-02\n",
+        )
+        .unwrap();
         root
     }
 
     #[test]
-    fn routes_the_cli_tag_and_refuses_any_other() {
+    fn accepts_a_plain_v_tag_and_refuses_any_other() {
         let root = fixture();
-        let cli = validate(root.path(), "cli-v1.2.3").unwrap();
-        for other in ["gui-v1.2.3", "v1.2.3"] {
+        let cli = validate(root.path(), "v1.2.3").unwrap();
+        for other in ["cli-v1.2.3", "gui-v1.2.3", "1.2.3", "V1.2.3"] {
             assert!(matches!(
                 validate(root.path(), other),
                 Err(MetadataError::TagPrefix)
@@ -404,36 +442,70 @@ mod tests {
     fn rejects_wrong_version_and_build_metadata() {
         let root = fixture();
         assert!(matches!(
-            validate(root.path(), "cli-v1.2.4"),
+            validate(root.path(), "v1.2.4"),
             Err(MetadataError::VersionMismatch { .. })
         ));
         assert!(matches!(
-            validate(root.path(), "cli-v1.2.3+local"),
+            validate(root.path(), "v1.2.3+local"),
             Err(MetadataError::BuildMetadata)
         ));
         assert!(matches!(
-            validate(root.path(), "cli-v1.2.3-rc.1"),
+            validate(root.path(), "v1.2.3-rc.1"),
             Err(MetadataError::CliPrerelease)
         ));
     }
 
     #[test]
-    fn never_borrows_notes_from_the_other_lane() {
+    fn an_unreleased_section_is_not_release_notes() {
         let root = fixture();
-        fs::write(root.path().join("CHANGELOG-CLI.md"), "## [Unreleased]\n").unwrap();
+        fs::write(root.path().join("CHANGELOG.md"), "## [Unreleased]\n").unwrap();
         assert!(matches!(
-            validate(root.path(), "cli-v1.2.3"),
+            validate(root.path(), "v1.2.3"),
             Err(MetadataError::MissingNotes { .. })
+        ));
+    }
+
+    #[test]
+    fn a_tag_needs_its_section_dated() {
+        let root = fixture();
+        for heading in ["## [1.2.3]", "## [1.2.3] — soon", "## [1.2.3] — 2026-1-2"] {
+            fs::write(root.path().join("CHANGELOG.md"), format!("{heading}\n")).unwrap();
+            assert!(
+                matches!(
+                    validate(root.path(), "v1.2.3"),
+                    Err(MetadataError::UndatedNotes { .. })
+                ),
+                "{heading}"
+            );
+        }
+    }
+
+    /// Between releases the CLI carries `X.Y.Z-dev`: a candidate builds it,
+    /// and no tag can publish it.
+    #[test]
+    fn a_development_version_is_a_candidate_and_never_a_release() {
+        let root = fixture();
+        fs::write(
+            root.path().join("crates/colosseum-cli/Cargo.toml"),
+            "[package]\nname = \"colosseum-cli\"\nversion = \"1.3.0-dev\"\n",
+        )
+        .unwrap();
+        let cli = candidate(root.path(), "cli").unwrap();
+        assert_eq!(cli.version, "1.3.0-dev");
+        assert!(cli.prerelease);
+        assert!(matches!(
+            validate(root.path(), "v1.3.0-dev"),
+            Err(MetadataError::CliPrerelease)
         ));
     }
 
     #[test]
     fn candidate_uses_manifest_without_claiming_release_readiness() {
         let root = fixture();
-        fs::write(root.path().join("CHANGELOG-CLI.md"), "## [Unreleased]\n").unwrap();
+        fs::write(root.path().join("CHANGELOG.md"), "## [Unreleased]\n").unwrap();
         let cli = candidate(root.path(), "cli").unwrap();
         assert_eq!(cli.validation, "candidate");
-        assert_eq!(cli.tag, "cli-v1.2.3");
+        assert_eq!(cli.tag, "v1.2.3");
         assert!(matches!(
             candidate(root.path(), "other"),
             Err(MetadataError::Product)
@@ -441,15 +513,15 @@ mod tests {
     }
 
     #[test]
-    fn extracts_only_the_matching_product_notes() {
+    fn extracts_only_the_tagged_version_notes() {
         let root = fixture();
         fs::write(
-            root.path().join("CHANGELOG-CLI.md"),
-            "# CLI\n\n## [Unreleased]\n\nFuture.\n\n## [1.2.3]\n\nCLI notes.\n\n## [1.2.2]\n\nOld.\n",
+            root.path().join("CHANGELOG.md"),
+            "# CLI\n\n## [Unreleased]\n\nFuture.\n\n## [1.2.3] — 2026-01-02\n\nCLI notes.\n\n## [1.2.2] — 2026-01-01\n\nOld.\n",
         )
         .unwrap();
         assert_eq!(
-            release_notes(root.path(), "cli-v1.2.3").unwrap(),
+            release_notes(root.path(), "v1.2.3").unwrap(),
             "CLI notes.\n"
         );
     }
@@ -458,12 +530,12 @@ mod tests {
     fn notes_end_before_the_rule_that_separates_versions() {
         let root = fixture();
         fs::write(
-            root.path().join("CHANGELOG-CLI.md"),
+            root.path().join("CHANGELOG.md"),
             "# CLI\n\n---\n\n## [1.2.3] - 2026-01-01\n\nCLI notes.\n\n---\n\n## [1.2.2]\n\nOld.\n",
         )
         .unwrap();
         assert_eq!(
-            release_notes(root.path(), "cli-v1.2.3").unwrap(),
+            release_notes(root.path(), "v1.2.3").unwrap(),
             "CLI notes.\n"
         );
     }
@@ -474,7 +546,7 @@ mod tests {
         fs::write(root.path().join("LICENSE"), "license").unwrap();
         fs::create_dir_all(root.path().join("packaging/cli")).unwrap();
         fs::write(root.path().join("packaging/cli/README.md"), "cli readme").unwrap();
-        fs::write(root.path().join("CHANGELOG-CLI.md"), "cli changes").unwrap();
+        fs::write(root.path().join("CHANGELOG.md"), "cli changes").unwrap();
         fs::create_dir_all(root.path().join("docs/cli/formats")).unwrap();
         fs::write(root.path().join("docs/cli/quickstart.md"), "quick").unwrap();
         fs::write(root.path().join("docs/cli/formats/run.md"), "run").unwrap();
@@ -492,7 +564,7 @@ mod tests {
             "cli readme"
         );
         assert_eq!(
-            fs::read_to_string(stage.join("CHANGELOG-CLI.md")).unwrap(),
+            fs::read_to_string(stage.join("CHANGELOG.md")).unwrap(),
             "cli changes"
         );
         assert!(stage.join("docs/cli/quickstart.md").is_file());

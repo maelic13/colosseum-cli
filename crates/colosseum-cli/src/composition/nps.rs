@@ -203,6 +203,7 @@ pub(crate) async fn run_nps(command: NpsCommand, machine: bool, dry_run: bool) -
                 resolved_configuration: resolved.value(),
                 invocations,
                 wave_shape: None,
+                rail_warnings: None,
             },
             machine,
         );
@@ -254,7 +255,7 @@ pub(crate) async fn run_nps(command: NpsCommand, machine: bool, dry_run: bool) -
                 let difference = ((right.median_nps / left.median_nps) - 1.0).abs() * 100.0;
                 if difference > command.self_tolerance_percent {
                     eprintln!(
-                        "nps warning: self-pair median difference {difference:.3}% exceeds tolerance ±{:.3}%",
+                        "nps warning: self-pair median difference {difference:.3}% exceeds tolerance +/-{:.3}%",
                         command.self_tolerance_percent
                     );
                 }
@@ -473,16 +474,11 @@ pub(crate) async fn run_nps_scaling(
     };
     let mut path_pointers = Vec::new();
     for (job, scaling_job) in jobs.iter().enumerate() {
-        for participant in 0..2 {
+        for (participant, side) in scaling_job.participants.iter().enumerate().take(2) {
             path_pointers.push(format!(
                 "/jobs/{job}/participants/{participant}/participant/launch/executable"
             ));
-            if scaling_job.participants[participant]
-                .participant
-                .launch
-                .working_directory
-                .is_some()
-            {
+            if side.participant.launch.working_directory.is_some() {
                 path_pointers.push(format!(
                     "/jobs/{job}/participants/{participant}/participant/launch/working_directory"
                 ));
@@ -525,6 +521,7 @@ pub(crate) async fn run_nps_scaling(
                 resolved_configuration: resolved.value(),
                 invocations,
                 wave_shape: None,
+                rail_warnings: None,
             },
             machine,
         );

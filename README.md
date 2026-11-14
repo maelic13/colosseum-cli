@@ -20,8 +20,8 @@ integration or source access.
 
 **Looking for the desktop application?** Colosseum, for running and watching
 engine tournaments, is developed in its own repository,
-[maelic13/colosseum-gui](https://github.com/maelic13/colosseum-gui), and
-drives this CLI.
+[maelic13/colosseum](https://github.com/maelic13/colosseum), and drives
+this CLI.
 
 ---
 
@@ -34,7 +34,7 @@ directory. Engine faults are counted and shown, never folded into a score.
 
 ## Install
 
-Pick the newest entry on the [CLI release list](https://github.com/maelic13/colosseum/releases?q=tag%3Acli-v),
+Pick the [latest release](https://github.com/maelic13/colosseum-cli/releases/latest),
 download the archive for your platform (`colosseum-cli-…-windows-x64.zip`,
 `…-windows-arm64.zip`, `…-linux-x64.tar.gz` or `…-macos-arm64.tar.gz`),
 extract it anywhere and check it:
@@ -121,8 +121,8 @@ Continue with the [quickstart](docs/cli/quickstart.md), the
 Install **Rust 1.88 or newer**, then clone the repository:
 
 ```text
-git clone https://github.com/maelic13/colosseum.git
-cd colosseum
+git clone https://github.com/maelic13/colosseum-cli.git
+cd colosseum-cli
 ```
 
 Windows on Arm also needs `clang`; the
@@ -150,8 +150,8 @@ cross-target builds and the release checks.
 
 ## Help and project links
 
-- Something broken or missing? [Open an issue](https://github.com/maelic13/colosseum/issues).
-- Release history: [CLI changelog](CHANGELOG-CLI.md)
+- Something broken or missing? [Open an issue](https://github.com/maelic13/colosseum-cli/issues).
+- Release history: [changelog](CHANGELOG.md)
 - Building, testing and releasing from source: [development guide](docs/DEVELOPMENT.md)
 
 ---

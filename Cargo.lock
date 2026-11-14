@@ -178,7 +178,7 @@ dependencies = [
 
 [[package]]
 name = "colosseum-cli"
-version = "0.3.0"
+version = "0.6.0-dev"
 dependencies = [
  "clap",
  "colosseum-application",

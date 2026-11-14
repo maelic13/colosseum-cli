@@ -3,7 +3,10 @@
 - **Status:** Accepted. Revised 2026-09-29, before any of it was acted on:
   the swap moved from after the desktop application's first release to
   before both releases, when the maintainer chose to merge both `dev`
-  branches only after the rename (see *Branches and order*)
+  branches only after the rename (see *Branches and order*). Revised again
+  2026-11-14 and carried out: the swap and this repository's merge happened
+  at the split, not at the end of the programme (see *Revision 2026-11-14*,
+  which overrides the sections below wherever they differ)
 - **Date:** 2026-09-28
 - **Supersedes:** [ADR-0009](0009-retain-colosseum-for-1-0.md)'s release-lane
   row once the repositories are swapped; ADR-0009's product and executable
@@ -11,6 +14,34 @@
 - **Relates to:** PLAN §Phase 11 (step 11.1, milestone M0) and §Phase 14;
   [ADR-0011](0011-desktop-application-as-separate-cli-client.md);
   [naming research](../naming-decision.md)
+
+## Revision 2026-11-14: the swap at the split
+
+The desktop repository's ADR-0001 (2026-11-13) moved the swap from the end
+of the programme to the split, and the maintainer carried it out:
+
+- `maelic13/colosseum` is now `maelic13/colosseum-cli` (this repository),
+  and `maelic13/colosseum-gui` is now `maelic13/colosseum`. Both default
+  branches are `master`.
+- The 1.x egui application moved to the desktop repository's `legacy/`,
+  copied from this repository's `main` at `8fa63cc` (CLI 0.5.0), and is
+  released there as 1.2.0 on plain `v` tags. **No bridge release**: installed
+  1.1.0 copies are not offered an update, which the maintainer accepted.
+- This repository's `dev` was brought up to date with `master` and merged
+  into it by one pull request, which leaves the repository CLI-only. That is
+  the old step 14.1, done now. The `smt-slot-prototype` and
+  `win-x64-support` branches were deleted unmerged by decision.
+- **CLI tags.** Plain `vX.Y.Z` from the next release, 0.6.0, and the
+  published `cli-v0.1.0`–`cli-v0.5.0` releases are re-tagged `v0.1.0`–`v0.5.0`
+  on the same commits rather than kept, so the repository has one tag scheme.
+  A release from `master` claims Latest.
+- **The desktop releases here are deleted** (`v1.0.0`–`v1.0.2`, `gui-v1.1.0`)
+  once 1.2.0 is published from `maelic13/colosseum`, so the 1.x downloads are
+  never absent. The `v1.0.0` tag is the only ref to the pre-squash history of
+  1.0.0; it is archived before deletion or the loss accepted, the
+  maintainer's call.
+- What remains of Phase 14 is the release pair at the programme's end: the
+  CLI release that carries the protocol, then desktop 2.0.0 pinned to it.
 
 ## Context
 

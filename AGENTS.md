@@ -30,6 +30,32 @@ Agents work locally only: create the required commits, but never push, fetch,
 create tags, releases or pull requests, or perform other remote operations.
 The maintainer owns every remote operation.
 
+### Branches and pull requests
+
+- `master` is the trunk; nothing else lives long, and nothing is pushed to it
+  directly. Every coherent piece of work — a feature, a fix, a release, or
+  one tooling or documentation change — lives on its own short-lived branch
+  from `master` and lands as ONE squash commit through a pull request: no
+  merge commits, no rebase merges. The full procedure, the required checks
+  and the release steps are in [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+  *Delivery* and *Releases*.
+- On the branch, commit in small verified steps: one numbered step or one
+  coherent change per commit, as below. These commits are working records;
+  GitHub keeps them under the pull request (`refs/pull/<n>/head`) after the
+  squash, and their subjects may name the step.
+- Before the pull request opens, merge `master` into the branch if `master`
+  moved, so the pull request shows only the branch's own change.
+- The squash message — the pull request's title and description, which is
+  all that reaches `master` — is short and simple: an imperative title that
+  says what changed ("Report the time to an SPSA stop"; a release is
+  "Release 0.6.0"), with no phase, step or plan references; then a few plain
+  lines on what and why, wrapped at 72 columns; then, after an empty line,
+  the verification, one line each ("Tests: cargo test --workspace
+  --all-targets, 1,204 passed").
+- A user-visible change adds its entry under `CHANGELOG.md`'s
+  `[Unreleased]` in the commit that makes it, written for users. A release
+  only dates that section.
+
 `PLAN.md` §S8 records each open step's capability class (`R3`, `R2`, `I2`,
 `I1`, `M`, `V`), mirrored on the numbered `GUIDE.md` item; `GUIDE.md`'s
 "Current model mapping" table is the single maintainer-edited source that
@@ -110,6 +136,5 @@ consistency validation; they do not require rerunning unchanged Rust tests.
   argumentation.
 - `docs/DEVELOPMENT.md`: implemented build/test/release facts; update it when
   the workspace or release process actually changes, not merely when planned.
-- `CHANGELOG-CLI.md`: released user-visible changes of the CLI; root
-  `CHANGELOG.md` is only the index. The 1.x desktop application's changelog
-  is archived under `docs/archive/gui-1.x/`.
+- `CHANGELOG.md`: user-visible changes, `[Unreleased]` first; each release's
+  section is its release notes.

@@ -34,7 +34,7 @@ try {
 
     $binaryName = if ($Platform -eq "windows") { "colosseum-cli.exe" } else { "colosseum-cli" }
     $binary = Join-Path $root $binaryName
-    foreach ($required in @($binary, (Join-Path $root "LICENSE"), (Join-Path $root "README.md"), (Join-Path $root "CHANGELOG-CLI.md"), (Join-Path $root "docs/cli/README.md"), (Join-Path $root "docs/cli/quickstart.md"), (Join-Path $root "docs/cli/command-reference.md"))) {
+    foreach ($required in @($binary, (Join-Path $root "LICENSE"), (Join-Path $root "README.md"), (Join-Path $root "CHANGELOG.md"), (Join-Path $root "docs/cli/README.md"), (Join-Path $root "docs/cli/quickstart.md"), (Join-Path $root "docs/cli/command-reference.md"))) {
         if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
             throw "required archive file is missing: $required"
         }

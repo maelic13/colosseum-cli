@@ -4,11 +4,9 @@ Maintainer-facing notes: building from source, running the tests, and cutting
 a release. [`README.md`](../README.md) introduces the CLI;
 [`packaging/cli/README.md`](../packaging/cli/README.md) (the front page of
 every CLI archive) and [`cli/`](cli/README.md) are the CLI landing page and
-complete user guide. The desktop application is developed in its own
-repository, [maelic13/colosseum-gui](https://github.com/maelic13/colosseum-gui);
-the 1.x egui application it replaces stays on `main` until the merge that
-ends the programme, and its documents are archived in
-[`archive/gui-1.x/`](archive/gui-1.x/README.md).
+complete user guide. The desktop application is developed and released in
+its own repository, [maelic13/colosseum](https://github.com/maelic13/colosseum),
+as a client of this CLI.
 
 ## Prerequisites
 
@@ -37,8 +35,8 @@ no extra step.
 ## Build and run
 
 ```bash
-git clone https://github.com/maelic13/colosseum.git
-cd colosseum
+git clone https://github.com/maelic13/colosseum-cli.git
+cd colosseum-cli
 cargo run -p colosseum-cli -- --help
 ```
 
@@ -51,7 +49,7 @@ from one recipe:
 ```bash
 cargo xtask build   cli [--target <triple>] [--profile release|ci-release]
 cargo xtask package cli [--target <triple>] [--format <list>] [--no-smoke]
-cargo xtask release-check <cli-vX.Y.Z>
+cargo xtask release-check <vX.Y.Z>
 ```
 
 The product is the positional `cli`. `--target` defaults to the host's triple
@@ -67,7 +65,7 @@ reads the portable archive back with its smoke script unless `--no-smoke`.
 
 ```bash
 cargo xtask package cli                       # this host's portable archive
-cargo xtask release-check cli-v0.2.0
+cargo xtask release-check v0.6.0
 ```
 
 ## Tests
@@ -135,7 +133,7 @@ cargo test -p colosseum-engine --features platform-smoke --test affinity_smoke
 ## Workspace layout
 
 ```
-colosseum/
+colosseum-cli/
 ├─ crates/
 │  ├─ colosseum-core/     Pure domain rules, statistics and opaque identity values
 │  ├─ colosseum-application/ Runtime-neutral use cases and ports
@@ -145,43 +143,86 @@ colosseum/
 ├─ tools/release/         tag/version/changelog validation, archive staging and smoke
 ├─ tools/xtask/           the build/package/release-check entry point the workflow calls
 ├─ tools/docs/            parser-derived CLI command-reference generator
-├─ packaging/cli/         README.md, the front page of every CLI archive
+├─ packaging/cli/         README.md, the front page of every archive
 ├─ tests/fixtures/        vendored statistics fixtures and their generator
-├─ docs/cli/              CLI user guide (shipped in every CLI archive)
+├─ docs/cli/              CLI user guide (shipped in every archive)
 ├─ docs/architecture/     architecture, ADRs, phase records and acceptance evidence
-├─ docs/archive/gui-1.x/  the retired egui application's guidelines, changelog and notes
-├─ docs/gui-v2/           a pointer to the desktop application's repository
 ├─ docs/                  this guide and the logo
-└─ .github/workflows/     push/PR CI and the CLI release workflow
+└─ .github/workflows/     pull-request CI and the release workflow
 ```
 
-## Product versions and release lanes
+## Version and tags
 
 The CLI owns its version in `crates/colosseum-cli/Cargo.toml` and its release
-notes in [`CHANGELOG-CLI.md`](../CHANGELOG-CLI.md). Tags are `cli-v<semver>`
-until the repository swap moves the lane to plain `v<semver>` (ADR-0012);
-validate a prepared tag locally with:
+notes in [`CHANGELOG.md`](../CHANGELOG.md). Releases are plain `vX.Y.Z` tags
+(ADR-0012); validate a prepared tag locally with:
 
 ```bash
-cargo xtask release-check cli-v0.2.0
+cargo xtask release-check v0.6.0
 ```
 
-`main` still carries the 1.x desktop application and its `gui-v` lane until the
-merge that ends the programme; a `gui-v1.1.x` patch is made there, never here.
+`release-check` validates the tag's shape, that the manifest carries exactly
+that version and that the changelog has a dated section for it
+(`## [X.Y.Z] — YYYY-MM-DD`), then checks the generated command reference
+against the parser and the working tree for whitespace damage.
 
-`release-check` validates the tag's prefix and shape, that the product manifest
-carries exactly that version and that the product's changelog has a section for
-it, then checks the generated command reference against the parser and the
-working tree for whitespace damage.
+The desktop application is released from its own repository,
+[`maelic13/colosseum`](https://github.com/maelic13/colosseum), which bundles a
+pinned CLI release; nothing here builds or releases it.
 
-Push/pull-request CI runs the hermetic workspace on Windows, Linux and macOS in
-debug and optimized profiles, and independently builds the headless CLI
-artifact. The optimized leg uses `ci-release`, which inherits the shipped
-release profile — same `opt-level`, assertions and overflow checks off — but
-drops the distribution-only whole-program LTO and single codegen unit, and
-keeps symbols so a CI failure still has a backtrace. Those settings change no
-behaviour the suite can observe and cost minutes across the test binaries.
-Run it locally the same way:
+## Delivery
+
+`master` is the trunk; nothing else lives long, and nothing is pushed to it
+directly.
+
+1. **One branch per coherent piece of work.** A feature, a fix, a release, or
+   one tooling or documentation change gets its own short-lived branch from
+   `master`. On it, commit in small verified steps; those commits are working
+   records, and their subjects may name the `GUIDE.md` step.
+2. **One squash commit per branch.** The branch lands on `master` through a
+   pull request the maintainer squash-merges. No merge commits and no rebase
+   merges; the repository allows only squash merges. GitHub keeps the
+   branch's commits under the pull request (`refs/pull/<n>/head`) after the
+   squash.
+3. **The squash message is the pull request's title and description**, and
+   it alone reaches `master`, so it alone has a fixed shape: a short
+   imperative title that says what changed ("Report the time to an SPSA
+   stop"), with no phase, step or plan references (a release is
+   "Release X.Y.Z"); a few plain lines on what and why, wrapped at 72
+   columns; then, after an empty line, the verification, one line each
+   (`Tests: cargo test --workspace --all-targets, 1,204 passed`). No AI
+   attribution anywhere; `.claude/settings.json` turns Claude Code's off.
+4. **Before opening the pull request**, merge `master` into the branch if
+   `master` moved, so it shows only the branch's own change.
+5. **Two workflows run on every pull request into `master`**, and branch
+   protection requires one check from each, which gathers the rest:
+   - `CI complete` (`ci.yml`): formatting, the generated command reference,
+     `cargo check`, clippy with `-D warnings`, the release build, and the
+     hermetic workspace tests on Windows, Linux and macOS, debug and
+     optimized;
+   - `Verify the complete matrix` (`release.yml`): every release archive
+     built, packaged and smoked, exactly as a tag would build it.
+
+   Each always runs and fails unless every job it gathers succeeded: GitHub
+   reports a job skipped after a failed dependency as passing, so a required
+   check must never be skipped. The protection also requires the branch to
+   be up to date with `master`, so the tested merge is the one that lands. A
+   newer push to the pull request cancels the superseded runs. A pull
+   request green in both is one a tag releases.
+6. **After the merge**, the branch is deleted on `origin` (automatically) and
+   locally.
+
+```bash
+git fetch origin
+git switch -c <branch> origin/master
+```
+
+The optimized test leg uses `ci-release`, which inherits the shipped release
+profile — same `opt-level`, assertions and overflow checks off — but drops the
+distribution-only whole-program LTO and single codegen unit, and keeps symbols
+so a CI failure still has a backtrace. Those settings change no behaviour the
+suite can observe and cost minutes across the test binaries. Run it locally
+the same way:
 
 ```bash
 cargo test --workspace --all-targets --profile ci-release
@@ -189,41 +230,79 @@ cargo test --workspace --all-targets --profile ci-release
 
 The shipped binary is still built with the full `release` profile; only the
 test legs use `ci-release`.
-Release automation is `release-cli.yml`; only its final publication job
-receives write permission. It verifies the exact artifact list by name and
-count before publishing it, so a release carries what its matrix produced and
-nothing else. Checksums are
-generated and re-checked between jobs but are not published as an asset: the
-per-asset digests GitHub records are what to compare a download against.
 
-The lane also builds a candidate on a manual dispatch: every artifact is
-built, packaged and smoked, and the bundle is retained as
-`colosseum-cli-candidate-<full-commit-sha>` with its checksums and a candidate
-identity file, without a tag and without publishing anything.
+## Releases
 
-### Candidates and tags
+A release is a `vX.Y.Z` annotated tag on `master`, cut only on maintainer
+instruction, through `release.yml`; nothing else creates one. There are no
+permanent release branches.
 
-A candidate is made from **Actions → Colosseum CLI candidate and release →
-Run workflow**, on `main`, or from a terminal:
+The workflow validates first, builds, packages and smokes every archive
+read-only, verifies the exact archive list by name and count, and only then
+one job with write permission publishes the GitHub Release with the notes
+taken from the changelog section. Nothing exists on GitHub until every cell
+has passed. Checksums are generated and re-checked between jobs but are not
+published as an asset: the per-asset digests GitHub records are what to
+compare a download against. It builds Windows x64/Arm64, Linux x64 and macOS
+Arm64 archives, stages only the executable, license, README, changelog and
+`docs/cli/`, then checks packaged documentation links and runs
+version/help/self-test/deterministic JSON smoke against each unpacked archive.
+
+1. **The release commit, by pull request.** On a branch from `master` (it may
+   carry the changes being released), `crates/colosseum-cli/Cargo.toml` reads
+   `X.Y.Z`, `Cargo.lock` agrees, and the changelog's `[Unreleased]` becomes
+   `## [X.Y.Z] — YYYY-MM-DD`, with a fresh empty `[Unreleased]` above it. A
+   release record goes under `docs/architecture/` when the release decided
+   something. `cargo xtask release-check vX.Y.Z` passes. The pull request is
+   titled "Release X.Y.Z".
+2. **The rehearsal is that pull request.** Both required checks must be
+   green. A candidate whose version is a plain, not yet tagged `X.Y.Z`
+   proposes that release, so it also runs the release check before it builds.
+   The maintainer squash-merges it; the squash has the pull request's exact
+   tree, so its candidate run stands for it.
+3. **The tag.** On the merged `master`, the maintainer tags and pushes. The
+   tag run checks again, rebuilds every archive, proves the commit is on
+   `master`, and only then publishes it as the latest release.
+4. **Repair.** A failed tag run publishes nothing. Delete the tag locally and
+   on `origin`, fix `master` through a pull request, and tag again.
+5. **Reopen.** The next pull request into `master` that changes the product
+   bumps its version to the next one with `-dev` (`0.7.0-dev`), so a build
+   between releases never reports a released version. A `-dev` candidate
+   proposes nothing and skips the release check, and no tag can publish one.
+   The changelog's `[Unreleased]` grows as user-facing changes land, so step
+   1 only dates it.
 
 ```bash
-gh workflow run release-cli.yml --ref main
+git fetch origin
+git tag -a vX.Y.Z -m "Colosseum CLI X.Y.Z" origin/master
+git push origin vX.Y.Z
 ```
 
-A candidate creates no tag or GitHub Release. The CLI lane builds Windows
-x64/Arm64, Linux x64 and macOS Arm64 archives, stages only the CLI, license,
-CLI-specific README, CLI changelog and `docs/cli/`, then checks packaged
-documentation links and runs version/help/self-test/deterministic JSON smoke
-against each unpacked archive. Download the retained bundle from the run's **Artifacts** section
-to inspect it; Actions keeps it for the repository's artifact retention period.
+**A patch while `master` holds unreleased work.** Land the fix on `master` by
+its own pull request first. Then branch from the last release tag,
+cherry-pick the fix with `-x`, make the release commit of step 1 for
+`X.Y.Z+1`, tag it there, push only the tag, and delete the branch: the tag
+keeps the commit. The tag run accepts a patch tag whose commit descends from
+the `vX.Y.0` tag on `master`, and does not mark it the latest release.
+Rehearse it first by a manual dispatch of the workflow on the branch.
 
-Rerun a candidate after changing the CLI's code, dependencies, user
-documentation or packaging. Once it is accepted, tag the same commit on `main`
-with `cli-v<version>` and push the tag. The tag workflow proves the commit is
-on `main`, rebuilds and re-smokes every artifact, and only then creates the
-GitHub Release with the artifacts attached as
-release assets. The ordinary CI workflow remains responsible for the complete
-debug/release workspace test matrix; release packaging does not duplicate it.
+```bash
+git switch -c patch-X.Y.Z vX.Y.(Z-1)
+git cherry-pick -x <fix-on-master>
+git tag -a vX.Y.Z -m "Colosseum CLI X.Y.Z"
+git push origin vX.Y.Z
+git switch master
+git branch -D patch-X.Y.Z
+```
+
+A rehearsal without a pull request is a manual dispatch of the workflow on any
+ref (**Actions → Release → Run workflow**); it retains the bundle as
+`colosseum-cli-candidate-<full-commit-sha>` with its checksums and a candidate
+identity file, and creates no tag or release:
+
+```bash
+gh workflow run release.yml --ref <branch>
+```
 
 ## CLI documentation
 

@@ -94,7 +94,10 @@ the units completed and the exit code; a resume is a `resumed` event with the
 units completed and still to play. It does not repeat games; the journal has
 them.
 
-When the run finishes, `result.json` holds the final structured report, and
+When the run finishes, `result.json` holds the final structured report,
+`results.txt` the run's results as text — each engine's games by colour, how
+the games ended, the faults and each engine's search, or a tournament's
+standings and pairs — which the console report names rather than prints, and
 `failed-games/` keeps a forensic of every abnormal game: the round-trip stamps
 of each side's last five searches — when `go` was written, when the first and
 last `info` arrived with the time the engine reported, when `bestmove` arrived
@@ -166,12 +169,15 @@ the frozen final-window vector: `tuned-options.txt`, `tuned-options.json` and
 `tuned-options.toml`. The main `result.json` retains the source launch, tune
 conditions, schedule/version metadata, original values, floating means and
 rounded tuned values so it can feed `sprt --apply` without editing. Each
-iteration appears in it as a summary — the centres before and after, the plus
-and minus vectors sent, the pair score, the faults, and `games`, the first and
-last game numbers of its lines in `games.jsonl` — and never as its games: a
-tune of thousands of iterations writes a result of a few megabytes, and a
-running tune holds only the iteration it is playing. The document carries its
-own `schema_version` (2; version 1 carried every game).
+iteration appears in it as a summary — the centres after it, the pair score,
+the faults, and `games`, the first and last game numbers of its lines in
+`games.jsonl` — and never as its games: a tune of thousands of iterations
+writes a result of a few megabytes, and a running tune holds only the
+iteration it is playing. The arms an iteration played follow from the stored
+schedule and the centres before it. The document carries its own
+`schema_version`: 4 adds a warning per knob whose arms were clamped at a range
+end to `tune_audit`; 3 dropped each iteration's arm vectors; 1 carried every
+game.
 
 ## Stopping a run
 

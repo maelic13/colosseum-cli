@@ -1,9 +1,14 @@
 //! Progress blocks: what a long run tells the operator, and when.
 //!
-//! A progress report is counted in the run's own unit — pairs, games or
-//! iterations — because that is what the operator is waiting for and what a
+//! A progress report is counted in the run's own unit — games, or iterations
+//! for a tune — because that is what the operator is waiting for and what a
 //! decision is made of. A wall-clock schedule reports a different amount of
 //! evidence every time and tells a fast run the same thing as a slow one.
+//!
+//! A paired command still reports games: that its games are played and
+//! scored as colour-reversed pairs is how it is configured, not what an
+//! operator counts, and a count in pairs beside a rate in games reads as two
+//! numbers that do not agree.
 //!
 //! A time floor is still needed in one direction only: a fixed-node run can
 //! finish a unit in milliseconds, and printing every boundary would bury the
@@ -20,9 +25,11 @@ use serde_json::{Value, json};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProgressUnit {
-    /// Colour-reversed pairs: the atomic statistical unit.
+    /// Colour-reversed pairs, as CLI 0.4.0 and earlier recorded `sprt` and
+    /// `calibrate` progress. No command reports in it now; it is kept so
+    /// `status` still reads those run records.
     Pairs,
-    /// Individual games, for a command whose unit is not a pair.
+    /// Games: what every match-playing command reports in.
     Games,
     /// SPSA iterations, each one complete mini-match.
     Iterations,
@@ -148,6 +155,30 @@ impl ProgressBlock {
             "progress": self,
         })
     }
+}
+
+/// `text` as plain ASCII, for a console that is not UTF-8: what an earlier
+/// version stored with an em dash, a plus-or-minus or a multiplication sign
+/// is printed as this version prints it. Any other non-ASCII character is a
+/// `?`.
+#[must_use]
+pub fn ascii(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for character in text.chars() {
+        if character.is_ascii() {
+            out.push(character);
+            continue;
+        }
+        out.push_str(match u32::from(character) {
+            // Em dash, en dash, minus sign, box-drawing horizontal.
+            0x2014 | 0x2013 | 0x2212 | 0x2500 => "-",
+            0x00B1 => "+/-",
+            0x00D7 => "x",
+            0x2026 => "...",
+            _ => "?",
+        });
+    }
+    out
 }
 
 /// Seconds as an operator reads them: `45s`, `6m30s`, `2h05m`.
@@ -354,7 +385,7 @@ pub fn estimate(point: f64, lower: f64, upper: f64) -> String {
     format!("{} +/- {margin:.1}", signed(point))
 }
 
-/// A count with its noun, so a block never reports "1 pairs".
+/// A count with its noun, so a block never reports "1 games".
 #[must_use]
 pub fn plural(count: u64, singular: &str) -> String {
     if count == 1 {
@@ -389,6 +420,22 @@ pub fn time_for_units(done: u64, elapsed: Duration, remaining: u64) -> Option<Du
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// What 0.3.0 stored is printed as this version prints it.
+    #[test]
+    fn stored_symbols_are_printed_as_ascii() {
+        let stored = [0x2014_u32, 0x00B1, 0x00D7, 0x2026]
+            .map(|code| char::from_u32(code).unwrap().to_string());
+        let stored = format!(
+            "3434.3 {} 19.5 {} 1983.5/2362 points; 16 {} 2 {}",
+            stored[1], stored[0], stored[2], stored[3]
+        );
+        assert_eq!(
+            ascii(&stored),
+            "3434.3 +/- 19.5 - 1983.5/2362 points; 16 x 2 ..."
+        );
+        assert_eq!(ascii("plain"), "plain");
+    }
 
     #[test]
     fn a_resumed_run_reports_its_whole_time_but_rates_only_this_invocation() {
@@ -466,12 +513,12 @@ mod tests {
     fn a_headline_reads_as_a_fraction_of_the_cap() {
         let block = ProgressBlock::new(
             "sprt",
-            ProgressUnit::Pairs,
-            42,
-            Some(200),
+            ProgressUnit::Games,
+            84,
+            Some(400),
             Duration::from_secs(390),
         );
-        assert_eq!(block.headline(), "42/200 pairs (21%), 6m30s elapsed");
+        assert_eq!(block.headline(), "84/400 games (21%), 6m30s elapsed");
         let uncapped = ProgressBlock::new(
             "match",
             ProgressUnit::Games,
@@ -535,9 +582,9 @@ mod tests {
 
     #[test]
     fn a_count_agrees_with_its_noun() {
-        assert_eq!(plural(1, "pair"), "1 pair");
-        assert_eq!(plural(0, "pair"), "0 pairs");
-        assert_eq!(plural(42, "pair"), "42 pairs");
+        assert_eq!(plural(1, "game"), "1 game");
+        assert_eq!(plural(0, "game"), "0 games");
+        assert_eq!(plural(42, "game"), "42 games");
     }
 
     #[test]

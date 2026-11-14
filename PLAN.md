@@ -13,8 +13,8 @@ question with harsher requirements: reproducibility, explicit CPU placement,
 byte-level identification of inputs, durable long runs, and results that mean
 the same thing next month.
 
-**It is a general tool.** Rarog and Basilisk are the first two engines used to
-validate it, not its specification. Where a policy could reasonably differ
+**It is a general tool.** The engines used to validate it are not its
+specification. Where a policy could reasonably differ
 between projects, the tool ships a default with a stated reason and lets the
 user change it — see S3.
 
@@ -25,8 +25,7 @@ project owns its source, build, correctness and experiment policy.
 
 **Document audiences.** This file and [`GUIDE.md`](GUIDE.md) are the
 maintainer-facing pair: specifications, success criteria, evidence, forward
-plan. `README.md` is user-facing and covers the whole project — the Colosseum
-GUI and CLI — at an introductory level. The **user documentation**
+plan. `README.md` is user-facing and introduces the CLI. The **user documentation**
 (placement decided in Phase 9) is also user-facing and carries CLI detail:
 command reference, worked examples, and how to trust a result. Neither
 user-facing surface may carry phase numbers, internal naming or method
@@ -36,7 +35,8 @@ argumentation.
 
 ## S1. Implemented state
 
-**Published: GUI 1.1.0 and CLI 0.1.0 (2026-09-22), CLI 0.2.0 (2026-09-25).**
+**Published: CLI 0.1.0 (2026-09-22) to 0.5.0 (2026-10-29)**, tagged
+`v0.1.0`–`v0.5.0` (re-tagged from `cli-v` at the split).
 Phases 0–9 built and accepted the CLI; Phase 10 applied the first-release
 corrections a maintainer review found cheaper before anyone depends on
 published defaults (adjudication off by default, class-aware placement,
@@ -45,24 +45,28 @@ slot pool and the arrival-stamped clock model, persistent engines per slot,
 and the rest), qualified the result on a real engine, and finished the
 release preparation. It is all recorded in
 [`docs/architecture/phase-10-record.md`](docs/architecture/phase-10-record.md).
-Phase 12.1–12.4, the first adoption reports, shipped as CLI 0.2.0.
-**The GUI v2 programme is the main line of development:** the desktop
-application is re-designed and re-built as a separate client of the CLI in
-its own repository, and this repository becomes the CLI alone
-([ADR-0011](docs/architecture/adr/0011-desktop-application-as-separate-cli-client.md)).
+Phase 12.1–12.4, the first adoption reports, shipped as CLI 0.2.0; CLI
+0.3.0–0.5.0 followed from adoption. **The GUI v2 programme is the main line
+of development:** the desktop application is re-designed and re-built as a
+separate client of the CLI in its own repository, and this repository is the
+CLI alone since the split (2026-11-14,
+[ADR-0011](docs/architecture/adr/0011-desktop-application-as-separate-cli-client.md),
+[ADR-0012](docs/architecture/adr/0012-names-and-repositories-after-the-split.md)).
 Here that is Phase 11 (separation and the protocol specification), Phase 13
-(the protocol in the CLI, one minor release) and Phase 14 (retirement of
-the egui application); the GUI's own phases run in the GUI repository at
-the same time, and the two products release in quick succession (S8). This
+(the protocol in the CLI, one minor release) and Phase 14 (the release
+pair); the GUI's own phases run in the GUI repository at the same time, and
+the two products release in quick succession (S8). Requests from the
+maintainer's engine projects (Phase 12) come first: they ship as CLI 0.6.0,
+the first release through this repository's pull-request delivery. This
 document remains the binding design record and maintenance specification.
 
 **Colosseum is the identity of both products**, confirmed at step 11.1 by
 [ADR-0012](docs/architecture/adr/0012-names-and-repositories-after-the-split.md).
 The desktop product and executable are **Colosseum** / `colosseum`; the 1.x
 Cargo package is `colosseum-gui`. The independent CLI product, Cargo package
-and executable are **Colosseum CLI** / `colosseum-cli`. At the end of the
-programme (14.1), `maelic13/colosseum` becomes the desktop application's
-repository and this one becomes `maelic13/colosseum-cli` (ADR-0012). Shared
+and executable are **Colosseum CLI** / `colosseum-cli`. Since the swap at the
+split (2026-11-14), `maelic13/colosseum` is the desktop application's
+repository and this one is `maelic13/colosseum-cli` (ADR-0012). Shared
 packages keep their coherent
 `colosseum-*` names. Phase 0.6 established real search and supportability risks,
 and its CLI-only **UCI Rig** proposal was rejected. ADR-0008 accepts those risks
@@ -73,19 +77,16 @@ requirement to rename.
 
 The workspace today: `colosseum-core` (domain and statistics),
 `colosseum-application` (use cases and ports), `colosseum-uci` (protocol and
-process management), `colosseum-engine` (the one-game runner both products
-use, the GUI's tournament scheduler and SQLite store, OS topology and
-affinity adapters), `colosseum-gui` (desktop composition root, owning its
-library, config and paths) and `colosseum-cli` (headless composition root
-with its own match, SPRT, SPSA and tournament drivers). The GUI and CLI never
-depend on each other. The one duplication left is the game-playing driver:
-the GUI's scheduler and the CLI's drivers both sit on the same runner; Phase
-14 removes the GUI's copy together with the egui application (14.1). The required suite is hermetic and runs on
+process management), `colosseum-engine` (the one-game runner, PGN, openings,
+incident forensics, OS topology and affinity adapters) and `colosseum-cli`
+(the composition root with its match, SPRT, SPSA and tournament drivers).
+The egui desktop application, its scheduler and its SQLite store left at
+11.2.1 and now live only in the desktop repository's `legacy/`. The required suite is hermetic and runs on
 Windows, Linux and macOS in debug and optimized profiles.
 
-Validation engines: **Rarog** (Rust) and **Basilisk** (C++), chosen because they
-are available, actively developed, and differ in language and build system.
-Any two UCI engines would serve; nothing in the design depends on these.
+Validation engines: two independently developed UCI engines, in different
+languages and build systems. Any two UCI engines would serve; nothing in the
+design depends on which.
 
 ---
 
@@ -382,9 +383,9 @@ what keeps a possible Phase 9.0 rename bounded.
 
 **Since step 11.2.1** ([ADR-0011](docs/architecture/adr/0011-desktop-application-as-separate-cli-client.md)):
 `colosseum-gui`, the scheduler, the SQLite store and the core types only they
-used left `dev`; `main` keeps them, with the 1.x application, until the merge
-at 14.1. The desktop application is a separate repository that starts the CLI
-as a child process and speaks the protocol of S5.15.
+used left the repository (on `dev` at 11.2.1, on `master` with the merge at
+the split, 2026-11-14). The desktop application is a separate repository
+that starts the CLI as a child process and speaks the protocol of S5.15.
 
 ### Required end state
 
@@ -1853,10 +1854,10 @@ Facts from those phases that still govern new work:
 - `cargo xtask build|package|release-check cli` is the one build entry
   point, and the release workflow calls it. Artifacts are
   `colosseum-cli-<version>-<windows|linux|macos>-<x64|arm64>`; tags are
-  `cli-v<semver>` until 14.1 moves the lane to plain `v<semver>` (ADR-0012);
-  `main` keeps the 1.x `gui-v` lane, whose stable release holds the
-  repository-wide "latest", until 14.1; a release is published only from a
-  commit reachable from `main`; no `SHA256SUMS` is published.
+  plain `v<semver>` (ADR-0012, revised 2026-11-14); a release is published
+  only from a commit reachable from `master` (or a patch line from its
+  `vX.Y.0`), and one from `master` claims Latest; no `SHA256SUMS` is
+  published.
 - 10(w) was closed as rejected: the forfeits it studied were an engine
   defect, not the harness.
 
@@ -1882,7 +1883,7 @@ together:
 |---|---|---|
 | 11 — Separation | this repository | naming, the GUI repository seed, the CLI gap analysis, the protocol specification |
 | 13 — Protocol | this repository | the protocol implemented in the CLI; one CLI minor release |
-| 14 — Retirement | this repository | the egui application, scheduler and store removed; a CLI-only repository |
+| 14 — Swap, merge and release | this repository | the egui application, scheduler and store removed and the repositories swapped (done at the split); the CLI release that carries the protocol |
 | 12 — Maintenance | this repository | continues beside everything, as before |
 | GUI 1 — Design foundations | GUI repository | inventory of 1.x, requirements, layout concepts, design system |
 | GUI 2 — Repository and technology proof | GUI repository | skeleton, component gallery, performance proof |
@@ -1890,7 +1891,7 @@ together:
 | GUI 4 — Implementation | GUI repository | the application, packaging, acceptance |
 | GUI 5 — Release | GUI repository | the first release, pinned to the Phase 13 CLI release |
 
-The GUI repository, [`maelic13/colosseum-gui`](https://github.com/maelic13/colosseum-gui), was seeded
+The GUI repository, [`maelic13/colosseum`](https://github.com/maelic13/colosseum) (created as `maelic13/colosseum-gui`), was seeded
 with its `AGENTS.md`, `PLAN.md` and `GUIDE.md` from this repository at step
 11.2 and is the tracker for its steps. This section keeps the CLI steps
 in full and the joint milestones, so the programme reads in one place.
@@ -1906,9 +1907,9 @@ in full and the joint milestones, so the programme reads in one place.
 | M4 | Synthetic streams available | 13.2 | 2.3 performance proof |
 | M5 | Live events and control | 13.3, 13.4 | 4.5 live view on the real CLI |
 | M6 | Amendments, changed engines, queries | 13.5–13.7 | 4.6 results, history, amendments |
-| M7 | CLI release candidate | 13.8, from `dev` | 4.8 acceptance against the candidate |
-| M8 | Swap and merges | 14.1: the repository swap, then `dev` into `main` | takes `maelic13/colosseum`; `dev` into `master` |
-| M9 | Releases in quick succession | 14.2: the CLI release, then the 1.x releases deleted | 5.1, pinned to it, with the bridge release |
+| M7 | CLI release candidate | 13.8, a candidate build | 4.8 acceptance against the candidate |
+| M8 | Swap and merges (done 2026-11-14, at the split) | 14.1: the repository swap, then `dev` into `master` | took `maelic13/colosseum`; 1.x in `legacy/` as 1.2.0 |
+| M9 | Releases in quick succession | 14.2: the CLI release | 5.1, pinned to it |
 
 **Maintainer requirements (2026-09-27, revised after the same day's
 review), binding for every step in both repositories:**
@@ -1998,8 +1999,8 @@ review), binding for every step in both repositories:**
 
 **Where the work happens.** Phases 11, 13 and 14 are in this repository.
 GUI Phases 1–5 are in the GUI repository from step 11.2 on, tracked there.
-The egui application stays in maintenance on `main` until 14.1: a defect
-found in use is still a `gui-v1.1.x` patch. Phase 12 steps are taken beside
+The egui application is maintained in the desktop repository's `legacy/`
+until 2.0.0; nothing of it is fixed here. Phase 12 steps are taken beside
 all of it as reports arrive.
 
 ### Phase 11 — Separation (this repository)
@@ -2026,7 +2027,7 @@ all of it as reports arrive.
   for the 1.1.0 updater. The 1.x releases and their tags are deleted from
   this repository at 14.2. The new application must not share 1.x's data
   directories.
-- **11.2 The GUI repository seed** (`M`). [`docs/gui-v2/`](docs/gui-v2/README.md)
+- **11.2 The GUI repository seed** (`M`). `docs/gui-v2/`
   finalised under the 11.1 names — `AGENTS.md`, `PLAN.md`, `GUIDE.md` — and
   handed to the maintainer, who creates the remote repository
   (`maelic13/colosseum-gui`) and commits the seed as its first commit. The
@@ -2209,30 +2210,31 @@ all of it as reports arrive.
   reference regenerated.
 - **13.8 — EXIT: Conformance and candidate** (`V`). The conformance
   suite green; the schema and fixtures packaged as one release asset;
-  `docs/cli/protocol.md` final; a CLI release candidate dispatched from
-  `dev`, which GUI 4.8 accepts against (M7). The release itself follows the
-  swap and the merge (14.2).
+  `docs/cli/protocol.md` final; a CLI release candidate built from the
+  protocol's pull request (or dispatched on its branch), which GUI 4.8
+  accepts against (M7). The release itself is 14.2.
 
 ### Phase 14 — Swap, merge and release (both repositories)
 
-The egui application itself leaves `dev` at 11.2.1; this phase ends the
-programme in the order ADR-0012 *Branches and order* fixes.
+The egui application left `dev` at 11.2.1. The swap and the merge were
+moved to the split by the desktop repository's ADR-0001 and done there
+(ADR-0012, *Revision 2026-11-14*); what is left is the release pair.
 
-- **14.1 Swap and merge** (`I1`). After GUI 4.8 (M7). On `dev`, before
-  the merge: the CLI release lane moves to plain `v<semver>` tags and claims
-  the repository's Latest (the release workflow, `cargo xtask
-  release-check`, the architecture tests), and every link to this
-  repository's old address moves to `maelic13/colosseum-cli`. Then the
-  maintainer swaps the repositories and carries out the same-day checklist,
-  and merges `dev` into `main` here and into `master` in the desktop
-  repository, one pull request each. `main` loses the 1.x application in
-  that merge. (M8)
+- **14.1 Swap and merge** (`I1`) — **done 2026-11-14, at the split, not
+  after GUI 4.8.** The maintainer swapped the repositories. On `dev`, before
+  its merge into `master`: `master` merged in (CLI 0.3.0–0.5.0), the CLI
+  release lane moved to plain `v<semver>` tags on `master` that claim
+  Latest (`release.yml`, `cargo xtask release-check`, the architecture
+  tests), CI gating pull requests into `master`, every link to this
+  repository's old address moved to `maelic13/colosseum-cli`,
+  `CHANGELOG-CLI.md` renamed `CHANGELOG.md`, the archived 1.x documents and
+  the GUI seed pointer removed (the desktop repository holds them). The
+  maintainer re-tags `cli-v0.1.0`–`cli-v0.5.0` as `v0.1.0`–`v0.5.0` and,
+  after desktop 1.2.0 is out, deletes the 1.x releases and tags here. (M8)
 - **14.2 — EXIT: Releases** (`V`). The CLI minor release that carries the
-  protocol, the first plain-`v` tag, from `maelic13/colosseum-cli`; then
-  the desktop 2.0.0 release with its `gui-v2.0.0` bridge release, pinned to
-  it (GUI 5.1). Then the maintainer deletes every 1.x release and its tag
-  (`v1.0.0-rc.1`…`v1.0.2`, `gui-v1.1.x`) from this repository. The 1.x
-  source stays in history. No executable is renamed (ADR-0012). (M9)
+  protocol, from `maelic13/colosseum-cli`; then the desktop 2.0.0 release,
+  pinned to it (GUI 5.1), with no bridge release (desktop ADR-0001). No
+  executable is renamed (ADR-0012). (M9)
 
 **Programme exit:** one game-playing implementation, in the CLI; the desktop
 application released from its own repository over the protocol; this
@@ -2242,9 +2244,9 @@ repository building and releasing the CLI alone.
 
 Corrections and small additions reported by projects using the released CLI.
 This phase runs beside Phases 11, 13 and 14, not after them: a step here is small, changes
-no statistic and breaks no run-directory or run-file format, ships as its own
-CLI release from `main` (then merged into `dev`), and never waits for GUI
-work. Each report becomes
+no statistic and breaks no run-directory or run-file format, lands on
+`master` by its own pull request, ships in the next CLI release, and never
+waits for GUI work. Each report becomes
 one numbered step with its regression tests. The version follows the
 changelog section the step lands in: fixes only are a patch (`cli-v0.1.x`);
 a new command or option is a minor release (`cli-v0.2.0` carries 12.1–12.4,
@@ -2256,7 +2258,8 @@ changelog, and never lands as a patch. Added fields — a checkpoint's
 `seeded_from` — are compatible in both directions and do not count as
 format changes.
 
-- **(a) Rarog's tooling notes from the first adoption** (GUIDE 12.1, `I1`), reported 2026-09-22 with Rarog's B.2.6.1 record; nothing blocks.
+- **(a) Tooling notes from the first adoption** (GUIDE 12.1, `I1`), reported
+  2026-09-22; nothing blocks.
   - **`spsa status` ETA after a resume — resolved 2026-09-25, before this
     step.** Every checkpoint now records the run's total active time across
     invocations (`run_elapsed_seconds`), progress blocks and the SPRT total
@@ -2277,8 +2280,8 @@ format changes.
     path. A test stops and resumes a stub run and asserts both the note and
     the two log lines.
   - **`--json` carries the resume facts.** The human resume note stays on
-    stderr in `--json` mode — Rarog asked to keep it (B.2.7 notes,
-    2026-09-25), and the maintainer agreed — and the JSON value also
+    stderr in `--json` mode — kept at the user's request (2026-09-25),
+    which the maintainer agreed to — and the JSON value also
     carries the facts as a `resume` object (`unit`, `completed_units`,
     `remaining_units`), so a wrapper need not parse stderr. The
     JSON-contract tests assert that stdout is exactly one JSON value.
@@ -2290,8 +2293,9 @@ format changes.
 and the JSON-contract tests pass; a stopped and resumed synthetic tune shows
 a finite ETA in `spsa status`.
 
-- **(b) Rarog's notes from the B.2.7 tune and gate** (GUIDE 12.2–12.4, `I1`), reported 2026-09-25 against `cli-v0.1.0`; the runner's SPSA and
-  SPRT were validated at Rarog's scale (a 150,000-game tune, +13 Elo, no
+- **(b) Notes from a production tune and gate** (GUIDE 12.2–12.4, `I1`),
+  reported 2026-09-25 against `cli-v0.1.0`; the runner's SPSA and
+  SPRT were validated at production scale (a 150,000-game tune, +13 Elo, no
   faults). The resume items of that report are (a) above.
   - **12.2 `spsa history`.** A read-only command that prints the centre
     vector after every completed iteration, rebuilt from the journal
@@ -2327,9 +2331,29 @@ a finite ETA in `spsa status`.
     while the engines are still sent that FEN. Books are validated at load,
     so no run reaches it today; the fallback becomes an error naming the
     game and the FEN. A test hands the runner an invalid FEN.
+- **(d) Requests from the maintainer's engine projects, for CLI 0.6.0**
+  (GUIDE 12.6 onward), 2026-11-14. The maintainer takes these before the
+  GUI programme continues and releases them together as 0.6.0, the first
+  release through pull-request delivery and plain `v` tags, so the whole
+  path — pull request, candidate, tag, publication — is exercised on real
+  work. The intake is the engine projects' request list of 2026-11-13
+  (thirteen requests, kept in the engine repository) plus what the
+  maintainer adds; each request becomes a numbered step here when the
+  maintainer selects it, with its own contract, and none is implemented
+  from the list alone.
+  - **12.6 The time to an SPSA stop point.** When a tune runs with
+    `--stop-after-iteration N` below its total (stop at 2,000 of 6,000
+    iterations), every progress report — the console block and its
+    `run.log` line — and `spsa status` give the time left to the stop
+    point as well as the time left to the end of the tune, both from the
+    same observed rate. Without a stop point, or once the stop point is the
+    end, the report is unchanged. A test runs a synthetic tune with a stop
+    point and asserts both figures in the progress output, `run.log` and
+    `spsa status`, and that a resumed run with a new stop point reports the
+    new one.
 
 **Exit criterion (b):** each step's tests pass, the command reference is
-regenerated, `CHANGELOG-CLI.md` Unreleased names each change, and the run
+regenerated, `CHANGELOG.md` Unreleased names each change, and the run
 file schema, run-directory layout and every statistic are unchanged.
 
 ### Post-release research
@@ -2391,13 +2415,11 @@ Not scheduled steps; each needs its own evidence before it becomes one.
 | Path | What |
 |---|---|
 | `crates/colosseum-core/src/stats.rs` | SPRT, Elo, LOS, pentanomial and normalized Elo |
-| `crates/colosseum-core/src/{ml_ratings,rating_error}.rs` | joint ML ratings and Fisher-information error bars shared by both products |
-| `crates/colosseum-engine/src/{runner,live,scheduler,openings,store}.rs` | one-game runner and its live state (both products; the protocol's source at 13.3), the GUI's tournament driver and SQLite store (retired at 14.1) |
+| `crates/colosseum-core/src/{ml_ratings,rating_error}.rs` | joint ML ratings and Fisher-information error bars |
+| `crates/colosseum-engine/src/{runner,live,openings}.rs` | one-game runner and its live state (the protocol's source at 13.3) and openings |
 | `crates/colosseum-engine/src/{topology,affinity}*` | OS topology and affinity adapters behind the application ports |
 | `crates/colosseum-cli/src/composition.rs`, `composition/` | parser, dispatch, shared resolvers; one module per command |
 | `crates/colosseum-cli/src/{match_runner,sprt_runner,spsa_driver,tournament_driver}.rs` | the harness drivers; the tournament driver gains the S5.15 protocol in Phase 13 |
-| `crates/colosseum-gui/src/{backend,runtime_adapter,update}.rs` | GUI 1.x composition root, its unused runtime seam, the `gui-v` updater — all retired at 14.1 |
-| `docs/gui-v2/` | a pointer to the GUI repository, seeded from here at 11.2 |
 | `docs/architecture/gui-gap-analysis.md` | the CLI against the GUI requirements (11.3) |
 | `docs/cli/protocol.md` | the front-end protocol contract (11.4, final at 13.8) |
 | `docs/architecture/` | current/target architecture, ADRs, phase exit documents, the Phase 0–9 and Phase 10 records, the qualification |

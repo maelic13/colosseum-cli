@@ -10,13 +10,13 @@ custom build command or source-tree integration.
 
 The Colosseum desktop application, which runs and shows engine tournaments,
 is a separate product in its own repository,
-[maelic13/colosseum-gui](https://github.com/maelic13/colosseum-gui); it drives
+[maelic13/colosseum](https://github.com/maelic13/colosseum); it drives
 this CLI and is not part of this archive.
 
 ## Start here
 
 Download the archive for your platform from the
-[Colosseum CLI release list](https://github.com/maelic13/colosseum/releases?q=tag%3Acli-v),
+[Colosseum CLI releases](https://github.com/maelic13/colosseum-cli/releases),
 extract it, and check the installation:
 
 ```text
@@ -45,12 +45,12 @@ run directory.
 - [Generated command reference](docs/cli/command-reference.md)
 - [How to trust and report a result](docs/cli/trust-results.md)
 - [Engine compatibility and failure behavior](docs/cli/compatibility.md)
-- [CLI changelog](CHANGELOG-CLI.md)
+- [Changelog](CHANGELOG.md)
 
 Every release archive includes these exact version-matched documents for
 offline use. The executable also provides command-specific help, for example
 `colosseum-cli sprt --help`.
 
 Report problems through the
-[GitHub issue tracker](https://github.com/maelic13/colosseum/issues).
+[GitHub issue tracker](https://github.com/maelic13/colosseum-cli/issues).
 Colosseum is licensed under the [GNU GPL v3 or later](LICENSE).

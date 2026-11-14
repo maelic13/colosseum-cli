@@ -1,15 +1,14 @@
-# Colosseum
+# Colosseum CLI
 
-The repository of Colosseum CLI, a headless tool for testing ordinary UCI
-chess engines. GPL-3.0. The primary development machine is Windows.
+`maelic13/colosseum-cli`: Colosseum CLI, a headless tool for testing ordinary
+UCI chess engines. GPL-3.0. The primary development machine is Windows.
+Releases are plain `vX.Y.Z` tags.
 
 The desktop application, Colosseum, is a separate product in its own
-repository, `maelic13/colosseum-gui` (local checkout `D:\code\colosseum-gui`),
-and drives this CLI through its process protocol (ADR-0011, ADR-0012). The 1.x
-egui application left this repository's `dev` at step 11.2.1; `main` keeps it
-and its `gui-v` release lane until the merge at step 14.1, and its documents
-are archived in `docs/archive/gui-1.x/`. `docs/gui-v2/` only points to the new
-repository.
+repository, `maelic13/colosseum` (local checkout `D:\code\colosseum`), and
+drives this CLI through its process protocol (ADR-0011, ADR-0012). The 1.x
+egui application, which once lived here, is maintained there in `legacy/`
+until 2.0; nothing of it remains in this repository.
 
 ## Workspace
 
@@ -27,7 +26,7 @@ CLI with `cargo run -p colosseum-cli -- --help`; builds and archives through
 `cargo xtask build|package cli`. Before implementation work, read `AGENTS.md`,
 `PLAN.md` and `GUIDE.md`. `PLAN.md` and `GUIDE.md` are the maintainer-facing
 specification/tracker; `README.md`, `packaging/cli/README.md`, `docs/cli/` and
-`CHANGELOG-CLI.md` are **user-facing** (keep them simple, no phase/internal-
+`CHANGELOG.md` are **user-facing** (keep them simple, no phase/internal-
 method detail); `docs/DEVELOPMENT.md` holds implemented build, test, workspace
 and release facts.
 
@@ -69,10 +68,10 @@ counted, never folded into a score.
 - **Engine processes: kept per slot by default.** The CLI keeps each slot's
   engines between games (`--engine-processes per-slot`, the Phase 10 record,
   item (ae)), replacing one after any fault: fresh processes put an engine's
-  one-time work inside a game's search (Rarog's KPK bitbase forfeited games
+  one-time work inside a game's search (an engine's KPK bitbase forfeited games
   that way), and fastchess keeps its engines too. Tournaments and gauntlets
   keep them per slot too since CLI 0.3.0 (maintainer decision 2026-10-14):
-  Rarog's fast fixed-node games paid ~340 ms of spawn and handshake per
+  fast fixed-node games paid ~340 ms of spawn and handshake per
   ~0.75 s game; `--engine-processes per-game` restores fresh processes for
   old engines that leak state across `ucinewgame`.
 - **Durable writes are never silent**: a failed journal, PGN or checkpoint
@@ -97,4 +96,9 @@ demonstrated before proceeding. Complete one numbered step—including tests,
 documentation and status evidence—then commit it before starting the next.
 Use a short imperative subject naming the outcome, preferably including the
 step identifier. Never add `Co-authored-by` or assistant-attribution trailers.
-The full worktree, architecture and commit rules are binding in `AGENTS.md`.
+Work happens on a short-lived branch from `master` that lands as one squash
+commit through a pull request with a short, simple title and description;
+nothing is pushed to `master` directly, and a release is an annotated `vX.Y.Z`
+tag on the merged `master` (`docs/DEVELOPMENT.md` *Delivery* and
+*Releases*). The full worktree, architecture and commit rules
+are binding in `AGENTS.md`.

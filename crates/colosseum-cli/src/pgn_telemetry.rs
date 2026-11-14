@@ -29,9 +29,19 @@ pub struct EngineTelemetryReport {
     pub annotated_moves: u32,
     pub annotation_coverage: f64,
     pub depth: TelemetryMetric,
+    /// Depth over the moves whose score is in centipawns: a move reporting a
+    /// mate score often reports a huge depth, and those moves swamp the mean.
+    /// Its `samples` are the moves counted.
+    pub non_mate_depth: TelemetryMetric,
     pub elapsed_seconds: TelemetryMetric,
     pub nodes: TelemetryMetric,
+    /// Per-move nodes divided by that move's time: every move weighs the
+    /// same, so short searches pull the mean up.
     pub implied_nps: TelemetryMetric,
+    /// Total nodes over total search time, over the moves that reported both:
+    /// the rate the engine searched at across the run.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nodes_per_second: Option<f64>,
     /// Reported score in centipawns from the mover's point of view. A mate
     /// score is a claim about distance to mate, not an evaluation, so it is
     /// counted as covered but excluded from the centipawn statistics.
@@ -104,9 +114,13 @@ struct EngineSamples {
     eligible: u32,
     annotated: u32,
     depth: Vec<f64>,
+    non_mate_depth: Vec<f64>,
     elapsed: Vec<f64>,
     nodes: Vec<f64>,
     implied_nps: Vec<f64>,
+    /// Nodes and seconds summed over the moves that reported both.
+    timed_nodes: f64,
+    timed_seconds: f64,
     score_cp: Vec<f64>,
     absolute_score_cp: Vec<f64>,
     mate_scores: u32,
@@ -127,12 +141,80 @@ pub fn unavailable(reason: impl Into<String>) -> SearchTelemetryReport {
     }
 }
 
+/// Search telemetry per engine, each game's players named by its `White` and
+/// `Black` tags: what a PGN from anywhere says about who played.
 pub fn analyze_pgn(text: &str) -> SearchTelemetryReport {
+    analyze_games(text, |_| None)
+}
+
+/// Which side had White in each game of a two-engine run, by `GameNumber`.
+///
+/// A run's journal knows which side played White; its PGN only names the
+/// players. Two sides of one name are still two engines, so a run's
+/// telemetry is kept per side through this rather than per name.
+#[derive(Debug, Clone, Default)]
+pub struct RunSides {
+    /// Engine A's name, then engine B's, as the run reports them.
+    pub names: [String; 2],
+    /// Whether engine A had White, by game number. A game number the journal
+    /// gives both sides is left out, and that game falls back to its tags.
+    pub a_white: BTreeMap<u32, bool>,
+}
+
+impl RunSides {
+    /// Sides from `(game number, engine A had White)` pairs.
+    #[must_use]
+    pub fn new(names: [String; 2], games: impl IntoIterator<Item = (u32, bool)>) -> Self {
+        let mut a_white = BTreeMap::new();
+        let mut ambiguous = Vec::new();
+        for (number, white) in games {
+            if a_white
+                .insert(number, white)
+                .is_some_and(|seen| seen != white)
+            {
+                ambiguous.push(number);
+            }
+        }
+        for number in ambiguous {
+            a_white.remove(&number);
+        }
+        Self { names, a_white }
+    }
+
+    /// White's and Black's names for the PGN game `game`, when the journal
+    /// says which side was which.
+    fn players(&self, game: &str) -> Option<(String, String)> {
+        let number = pgn_tag(game, "GameNumber")?.parse::<u32>().ok()?;
+        let [a, b] = &self.names;
+        Some(if *self.a_white.get(&number)? {
+            (a.clone(), b.clone())
+        } else {
+            (b.clone(), a.clone())
+        })
+    }
+}
+
+/// [`analyze_pgn`] for a two-engine run's own PGN, per side rather than per
+/// name.
+pub fn analyze_run_pgn(text: &str, sides: &RunSides) -> SearchTelemetryReport {
+    analyze_games(text, |game| sides.players(game))
+}
+
+/// The telemetry of every game in `text`; `players` names a game's White and
+/// Black, and a game it has no answer for is named by its tags.
+fn analyze_games(
+    text: &str,
+    players: impl Fn(&str) -> Option<(String, String)>,
+) -> SearchTelemetryReport {
     let mut by_engine = BTreeMap::<String, EngineSamples>::new();
     let mut excluded_opening_moves = 0_u32;
     for game in split_pgn(text) {
-        let white = pgn_tag(game, "White").unwrap_or_else(|| "White".into());
-        let black = pgn_tag(game, "Black").unwrap_or_else(|| "Black".into());
+        let (white, black) = players(game).unwrap_or_else(|| {
+            (
+                pgn_tag(game, "White").unwrap_or_else(|| "White".into()),
+                pgn_tag(game, "Black").unwrap_or_else(|| "Black".into()),
+            )
+        });
         let tagged_opening_plies = pgn_tag(game, "OpeningPlyCount")
             .and_then(|value| value.parse::<usize>().ok())
             .unwrap_or(0);
@@ -197,6 +279,9 @@ pub fn analyze_pgn(text: &str) -> SearchTelemetryReport {
             }
             if let Some(value) = parsed.telemetry.depth {
                 samples.depth.push(value);
+                if parsed.telemetry.score_cp.is_some() {
+                    samples.non_mate_depth.push(value);
+                }
             }
             if let Some(value) = parsed.telemetry.elapsed_seconds {
                 samples.elapsed.push(value);
@@ -206,9 +291,12 @@ pub fn analyze_pgn(text: &str) -> SearchTelemetryReport {
             }
             if let (Some(nodes), Some(elapsed)) =
                 (parsed.telemetry.nodes, parsed.telemetry.elapsed_seconds)
-                && elapsed > 0.0
             {
-                samples.implied_nps.push(nodes / elapsed);
+                samples.timed_nodes += nodes;
+                samples.timed_seconds += elapsed;
+                if elapsed > 0.0 {
+                    samples.implied_nps.push(nodes / elapsed);
+                }
             }
         }
     }
@@ -221,9 +309,12 @@ pub fn analyze_pgn(text: &str) -> SearchTelemetryReport {
             annotated_moves: samples.annotated,
             annotation_coverage: fraction(samples.annotated, samples.eligible),
             depth: metric(samples.depth, samples.eligible),
+            non_mate_depth: metric(samples.non_mate_depth, samples.eligible),
             elapsed_seconds: metric(samples.elapsed, samples.eligible),
             nodes: metric(samples.nodes, samples.eligible),
             implied_nps: metric(samples.implied_nps, samples.eligible),
+            nodes_per_second: (samples.timed_seconds > 0.0)
+                .then(|| samples.timed_nodes / samples.timed_seconds),
             score_cp: score_metric(samples.score_cp, samples.eligible, samples.mate_scores),
             mean_absolute_score_cp: score_metric(
                 samples.absolute_score_cp,
@@ -597,6 +688,8 @@ mod tests {
         assert_eq!(a.depth.mean, Some(20.0));
         assert_eq!(a.elapsed_seconds.median, Some(1.0));
         assert_eq!(a.implied_nps.mean, Some(1_500.0));
+        // 3,500 nodes over two seconds, where the per-move mean is 1,500.
+        assert_eq!(a.nodes_per_second, Some(1_750.0));
         let b = report
             .engines
             .iter()
@@ -605,6 +698,59 @@ mod tests {
         assert_eq!(b.depth.median, Some(30.0));
         assert_eq!(b.elapsed_seconds.mean, Some(0.5));
         assert_eq!(b.implied_nps.mean, Some(3_000.0));
+    }
+
+    /// One binary run twice: the PGN names both players alike, and only the
+    /// journal's sides tell their searches apart.
+    #[test]
+    fn a_run_keeps_two_sides_of_one_name_apart_by_side() {
+        let game = |number: u32, white_depth: u32, black_depth: u32| {
+            format!(
+                "[Event \"e\"]\n[White \"twin\"]\n[Black \"twin\"]\n[Result \"1/2-1/2\"]\n\
+                 [GameNumber \"{number}\"]\n\n\
+                 1. e4 {{d={white_depth} t=1s n=10}} e5 {{d={black_depth} t=1s n=10}} 1/2-1/2\n\n"
+            )
+        };
+        // Engine A searches to depth 10, engine B to depth 20, whichever
+        // colour each has.
+        let pgn = game(1, 10, 20) + &game(2, 20, 10) + &game(3, 10, 20);
+        assert_eq!(analyze_pgn(&pgn).engines.len(), 1, "one name, one engine");
+
+        let sides = RunSides::new(
+            ["twin (A)".into(), "twin (B)".into()],
+            [(1, true), (2, false), (3, true)],
+        );
+        let report = analyze_run_pgn(&pgn, &sides);
+        let engines = report
+            .engines
+            .iter()
+            .map(|engine| {
+                (
+                    engine.engine.as_str(),
+                    engine.eligible_moves,
+                    engine.depth.mean,
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            engines,
+            [("twin (A)", 3, Some(10.0)), ("twin (B)", 3, Some(20.0))]
+        );
+    }
+
+    #[test]
+    fn a_game_the_journal_does_not_place_is_named_by_its_tags() {
+        let pgn = "[Event \"e\"]\n[White \"x\"]\n[Black \"y\"]\n[Result \"1/2-1/2\"]\n\
+                   [GameNumber \"7\"]\n\n1. e4 {d=1 t=1s n=1} e5 {d=1 t=1s n=1} 1/2-1/2\n\n";
+        // Game 7 is given both sides, so it is not placed at all.
+        let sides = RunSides::new(["a".into(), "b".into()], [(7, true), (7, false)]);
+        let report = analyze_run_pgn(pgn, &sides);
+        let names = report
+            .engines
+            .iter()
+            .map(|engine| engine.engine.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(names, ["x", "y"]);
     }
 
     #[test]
@@ -747,6 +893,9 @@ mod tests {
         assert_eq!(alpha.nodes.coverage, 0.8);
         assert_eq!(alpha.depth.coverage, 1.0);
         assert_eq!(alpha.elapsed_seconds.coverage, 1.0);
+        // Two of Alpha's five moves reported a mate: the non-mate depth is
+        // over the other three.
+        assert_eq!(alpha.non_mate_depth.samples, 3);
 
         let beta = engine("Beta 2.3.1");
         assert_eq!(beta.score_cp.mean, Some(-89.5));

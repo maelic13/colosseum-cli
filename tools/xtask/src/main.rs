@@ -3,7 +3,7 @@
 //! ```text
 //! cargo xtask build   cli [--target <triple>] [--profile release|ci-release]
 //! cargo xtask package cli [--target <triple>] [--format <list>] [--no-smoke]
-//! cargo xtask release-check <cli-vX.Y.Z>
+//! cargo xtask release-check <vX.Y.Z>
 //! ```
 //!
 //! The release workflow calls these commands, so a local archive and a
@@ -89,7 +89,7 @@ fn run() -> Result<()> {
         "release-check" => {
             let tag = rest
                 .first()
-                .ok_or("release-check needs a tag, for example cli-v0.2.0")?;
+                .ok_or("release-check needs a tag, for example v0.6.0")?;
             check::release_check(&root, tag)
         }
         "help" | "--help" | "-h" => {
@@ -112,7 +112,7 @@ fn print_usage() {
         "Usage:
   cargo xtask build   cli [--target <triple>] [--profile release|ci-release]
   cargo xtask package cli [--target <triple>] [--format <list>] [--no-smoke]
-  cargo xtask release-check <cli-vX.Y.Z>
+  cargo xtask release-check <vX.Y.Z>
 
 The product is a positional argument: `cli`.
 `--target` defaults to this host's triple and is always passed to cargo, so
@@ -129,7 +129,7 @@ archive (zip on Windows, tar.gz elsewhere), the only one it takes there.
 Examples:
   cargo xtask build cli
   cargo xtask package cli --target aarch64-pc-windows-msvc
-  cargo xtask release-check cli-v0.1.0"
+  cargo xtask release-check v0.6.0"
     );
 }
 
