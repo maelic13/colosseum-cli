@@ -258,8 +258,9 @@ permanent release branches.
 
 The workflow validates first, builds, packages and smokes every archive
 read-only, verifies the exact archive list by name and count, and only then
-one job with write permission publishes the GitHub Release with the notes
-taken from the changelog section. Nothing exists on GitHub until every cell
+one job with write permission publishes the GitHub Release, titled
+"Colosseum CLI X.Y.Z" (the tag alone carries the `v`), with the notes taken
+from the changelog section. Nothing exists on GitHub until every cell
 has passed. Checksums are generated and re-checked between jobs but are not
 published as an asset: the per-asset digests GitHub records are what to
 compare a download against. It builds Windows x64/Arm64, Linux x64 and macOS

@@ -97,6 +97,11 @@ fn the_release_lane_is_the_only_one_and_is_complete_and_least_privileged() {
     // The lane builds, packages and smokes the product through the one build
     // entry point.
     assert!(release.contains("cargo xtask package cli"));
+    // The release is titled with the product name and the bare version
+    // ("Colosseum CLI 0.6.0"); the tag alone carries the `v`.
+    assert!(
+        release.contains("          name: Colosseum CLI ${{ needs.prepare.outputs.version }}\n")
+    );
 
     assert!(release.contains("permissions:\n  contents: read"));
     assert_eq!(release.matches("contents: write").count(), 1);

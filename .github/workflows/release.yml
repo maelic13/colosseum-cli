@@ -298,7 +298,7 @@ jobs:
       - name: Publish the GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          name: Colosseum CLI v${{ needs.prepare.outputs.version }}
+          name: Colosseum CLI ${{ needs.prepare.outputs.version }}
           body_path: release-artifacts/RELEASE-NOTES.md
           # A stable release from master is the repository's latest; a patch
           # tagged on an older line is not.
