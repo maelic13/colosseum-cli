@@ -115,12 +115,17 @@ lines alike, is appended to `run.log`, and the most recent one is retained in
 last showed and a closed console loses nothing.
 
 At its end, a run prints its own short report on standard output and names
-its results file. `match`, `sprt` and `calibrate` write each engine's games by
-colour and its search to `results.txt` in the run directory, read back from
-the run directory exactly as [`stats`](stats.md) replays them, and keep the
-same figures in `run-record.json` under `results` and in the `--json` value:
+its results file. `match`, `sprt` and `calibrate` write the paired score —
+Elo and nElo with the half-width of their 95% intervals, and the pentanomial
+of the colour-reversed pairs, as the progress block shows them — then each
+engine's games by colour and its search to `results.txt` in the run
+directory, read back from the run directory exactly as [`stats`](stats.md)
+replays them, and keep the same figures in `run-record.json` under `results`
+(the paired score under `results.paired`) and in the `--json` value:
 
 ```text
+Elo +4.5 +/- 2.5; nElo +8.6 +/- 4.9 over 19344 paired games
+Ptnml: [90, 2122, 4999, 2371, 90]
 candidate: as White 2755 W / 5010 D / 1907 L of 9672, score 54.4%; as Black 2050 W / 4973 D / 2649 L of 9672, score 46.9%
 baseline: as White 2649 W / 4973 D / 2050 L of 9672, score 53.1%; as Black 1907 W / 5010 D / 2755 L of 9672, score 45.6%
 candidate: 1,190,627 of 1,190,627 moves annotated (100.0%); depth 15.20 mean, 13 median; 175,913 nodes per move; 70.5 ms per move; 2.49M nodes per second

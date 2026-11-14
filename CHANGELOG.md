@@ -13,7 +13,14 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `spsa status` (`eta.stop_point` in JSON). Both come from the same
   observed rate; a resume with a new stop reports the new one
 
+- `results.txt` of a `match`, `sprt` or `calibrate` run starts with its
+  paired score: Elo and nElo with their 95% intervals, and the pentanomial,
+  in the words the progress block uses; `run-record.json` and the `--json`
+  value carry the same under `results.paired`
+
 ### Fixed
+- A `match` run record's `official_sample` holds the pentanomial and the
+  complete pairs of the paired sample; it held five zeros
 - With a different clock for each side, an engine is told its opponent's
   own increment: `winc` comes from White's control and `binc` from
   Black's. Before, the engine to move was sent its own increment as both.

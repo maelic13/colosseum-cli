@@ -276,10 +276,10 @@ configuration is refused on resume. The directory contains:
 | `games.jsonl` | Append-only journal, one checksummed record per game |
 | `games.pgn` | Portable game export, appended one game at a time |
 | `checkpoint.json` and `checkpoint.previous.json` | Checksummed aggregates and the journal position they cover |
-| `run-record.json` | Versioned lifecycle and official sample |
+| `run-record.json` | Versioned lifecycle and official sample, with its pentanomial |
 | `run.log` | Append-only JSON-lines log of progress blocks, faults, stop and resume |
 | `result.json` | Final structured match report |
-| `results.txt` | Each engine's games by colour, terminations, faults and search, as text |
+| `results.txt` | Elo, nElo and pentanomial, each engine's games by colour, terminations, faults and search, as text |
 | `failed-games/` | Round-trip timing, UCI traffic and stderr for abnormal games |
 
 Progress is written to stderr every `--progress-every N` games, and once more

@@ -153,13 +153,17 @@ fn colour_results(
     vec![first, second]
 }
 
-/// What a run reports at its end beyond its own statistics, read back from
-/// its run directory exactly as `stats` replays it: a two-engine run's games
-/// by colour, a tournament's standings and pairs, how the counted games
-/// ended, the faults and how they were scored, and each engine's search
-/// telemetry from every game in the PGN.
+/// What a run reports at its end, read back from its run directory exactly
+/// as `stats` replays it: a two-engine run's paired score and games by
+/// colour, a tournament's standings and pairs, how the counted games ended,
+/// the faults and how they were scored, and each engine's search telemetry
+/// from every game in the PGN.
 #[derive(Debug, Clone, Serialize)]
 pub struct RunResults {
+    /// A two-engine run's official sample by colour-reversed pair, from
+    /// engine A's side.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paired: Option<PairedScore>,
     /// Engine A first, for a two-engine run. Only games of the official
     /// sample count: post-terminal pairs and games nobody could score are
     /// left out, as the sample leaves them out.
@@ -177,11 +181,71 @@ pub struct RunResults {
     pub analysis_unavailable: Option<String>,
 }
 
+/// A two-engine run's official sample counted by colour-reversed pair: the
+/// pentanomial, and the Elo and normalized Elo estimated from it with their
+/// 95% intervals, as the run's progress reports them.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PairedScore {
+    /// Pairs scoring 0, 0.5, 1, 1.5 and 2 for engine A.
+    pub pentanomial: [u32; 5],
+    pub complete_pairs: u32,
+    /// Counted games whose pair is not complete: in no paired figure.
+    pub unpaired_games: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub elo: Option<EloEstimate>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub normalized_elo: Option<EloEstimate>,
+    /// Why there are no estimates.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub estimates_unavailable: Option<String>,
+}
+
+/// A point estimate and its 95% interval.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+pub struct EloEstimate {
+    pub elo: f64,
+    pub lower: f64,
+    pub upper: f64,
+}
+
+impl PairedScore {
+    fn from_journal(journal: &[u8]) -> Self {
+        let (games, _) = journal_games(journal);
+        let (sample, paired_games) = pair_units(&games);
+        let (elo, normalized_elo, estimates_unavailable) =
+            match pentanomial_statistics(&sample, Z95) {
+                Ok(statistics) => (
+                    Some(EloEstimate {
+                        elo: statistics.logistic_elo.elo,
+                        lower: statistics.logistic_elo.lower,
+                        upper: statistics.logistic_elo.upper,
+                    }),
+                    Some(EloEstimate {
+                        elo: statistics.normalized_elo.elo,
+                        lower: statistics.normalized_elo.lower,
+                        upper: statistics.normalized_elo.upper,
+                    }),
+                    None,
+                ),
+                Err(error) => (None, None, Some(error.to_string())),
+            };
+        Self {
+            pentanomial: sample.counts(),
+            complete_pairs: sample.counts().iter().sum(),
+            unpaired_games: (games.len() - paired_games) as u32,
+            elo,
+            normalized_elo,
+            estimates_unavailable,
+        }
+    }
+}
+
 /// The end-of-run results of the run in `root`: a two-engine run's, whose
 /// engines A and B are named `names` in its PGN, or a tournament's, which
 /// names its participants itself.
 pub fn run_results(root: &Path, names: Option<[&str; 2]>) -> RunResults {
     let journal = fs::read(root.join(crate::journal::JOURNAL_FILE)).unwrap_or_default();
+    let paired = names.map(|_| PairedScore::from_journal(&journal));
     let by_colour = match names {
         Some(names) => {
             let games = crate::journal::read_journal_bytes(&journal)
@@ -223,6 +287,7 @@ pub fn run_results(root: &Path, names: Option<[&str; 2]>) -> RunResults {
         None => (None, None, None),
     };
     RunResults {
+        paired,
         by_colour,
         telemetry,
         terminations,
@@ -1225,6 +1290,36 @@ fn invert(result: PairGameResult) -> PairGameResult {
     }
 }
 
+/// The complete colour-reversed units among `games`, as a pentanomial, and
+/// how many games they hold. A unit counts when both of its assignments are
+/// there, in order, on one opening; any other game is left unpaired.
+fn pair_units(games: &[RawGame]) -> (PentanomialVector, usize) {
+    let mut sample = PentanomialVector::default();
+    let mut paired_games = 0;
+    let mut by_unit = BTreeMap::<(u32, u32), Vec<&RawGame>>::new();
+    for game in games {
+        if let Some(slot) = game.slot {
+            by_unit.entry(slot.unit()).or_default().push(game);
+        }
+    }
+    for unit in by_unit.values_mut() {
+        unit.sort_by_key(|game| game.slot.map(|slot| slot.pair_game));
+        let assignments = unit
+            .iter()
+            .filter_map(|game| game.slot.map(|slot| slot.pair_game))
+            .collect::<Vec<_>>();
+        if unit.len() == 2
+            && unit[0].slot.is_some_and(PairSlot::is_first_assignment)
+            && assignments[1] == assignments[0] + 1
+            && unit[0].opening == unit[1].opening
+        {
+            sample.record_pair(unit[0].outcome, unit[1].outcome);
+            paired_games += 2;
+        }
+    }
+    (sample, paired_games)
+}
+
 fn build_report(
     authority: &'static str,
     path: PathBuf,
@@ -1250,31 +1345,11 @@ fn build_report(
             PairGameResult::Loss => losses += 1,
         }
     }
-    let mut sample = PentanomialVector::default();
-    let mut paired_games = 0;
-    if paired_capable {
-        let mut by_unit = BTreeMap::<(u32, u32), Vec<&RawGame>>::new();
-        for game in &games {
-            if let Some(slot) = game.slot {
-                by_unit.entry(slot.unit()).or_default().push(game);
-            }
-        }
-        for unit in by_unit.values_mut() {
-            unit.sort_by_key(|game| game.slot.map(|slot| slot.pair_game));
-            let assignments = unit
-                .iter()
-                .filter_map(|game| game.slot.map(|slot| slot.pair_game))
-                .collect::<Vec<_>>();
-            if unit.len() == 2
-                && unit[0].slot.is_some_and(PairSlot::is_first_assignment)
-                && assignments[1] == assignments[0] + 1
-                && unit[0].opening == unit[1].opening
-            {
-                sample.record_pair(unit[0].outcome, unit[1].outcome);
-                paired_games += 2;
-            }
-        }
-    }
+    let (mut sample, paired_games) = if paired_capable {
+        pair_units(&games)
+    } else {
+        (PentanomialVector::default(), 0)
+    };
     for _ in paired_games..games.len() {
         sample.record_unpaired_game();
     }
@@ -1549,6 +1624,13 @@ mod tests {
                 },
             ]
         );
+        // By pair from A's side: a win and a loss (1), a draw and a win
+        // (1.5); the third pair has a post-terminal and an unscorable game,
+        // neither of which counts.
+        let paired = results.paired.as_ref().unwrap();
+        assert_eq!(paired.pentanomial, [0, 0, 1, 1, 0]);
+        assert_eq!((paired.complete_pairs, paired.unpaired_games), (2, 0));
+        assert!(paired.elo.is_some() && paired.normalized_elo.is_some());
         // No PGN, so no telemetry; the colours stand without it.
         assert_eq!(results.telemetry.status, "unavailable");
         // The same four counted games, by how they ended.

@@ -1841,7 +1841,6 @@ leaves the table in the commit that finishes it.
 
 | Step | Waits for |
 |---|---|
-| 12.8 | — |
 | 12.5 | — |
 | 12.9 | — |
 | 12.10 | — |
@@ -2507,15 +2506,24 @@ a finite ETA in `spsa status`.
     send what they did. The parity matrix plays depth 1, whose `go` is
     unchanged, and the oracle replay is the required suite's statistics
     fixtures, which pass.
-  - **12.8 A fixed match's score in `results.txt` and the run record —
-    `I1`.** Rarog request 12. `match` writes `official_sample.pentanomial`
-    as five zeros although its checkpoint holds the counts, and
-    `results.txt` has no pentanomial, Elo or nElo line. Fill the run
-    record's counts from the paired sample and add the pentanomial, Elo and
-    nElo with their 95% intervals to `results.txt` as `sprt` reports them.
-    Nothing changes definition. A test asserts the run record's counts
-    equal a recount of the PGN by pair and that `results.txt` carries the
-    figures the progress output printed.
+  - **12.8 A fixed match's score in `results.txt` and the run record — `I1`,
+    DONE 2026-11-14.** Rarog request 12. `match` writes
+    `official_sample.pentanomial` as five zeros although its checkpoint
+    holds the counts, and `results.txt` has no pentanomial, Elo or nElo
+    line. Fill the run record's counts from the paired sample and add the
+    pentanomial, Elo and nElo with their 95% intervals to `results.txt` as
+    `sprt` reports them. Nothing changes definition. A test asserts the run
+    record's counts equal a recount of the PGN by pair and that
+    `results.txt` carries the figures the progress output printed. Done:
+    `results.txt` and the run record's `results` gain a paired score
+    (`results.paired`) recounted from the journal by pair as `stats` pairs
+    games, so `sprt` and `calibrate` carry it too; `match` fills
+    `official_sample` (pentanomial, complete pairs, unpaired games) from the
+    paired sample its final report prints. The CLI test plays a scripted
+    three-opening match whose pairs score 0, 1 and 2 and compares the run
+    record with a PGN recount and `results.txt` with the recorded progress
+    block; `stats_replay` checks the recount leaves out post-terminal and
+    unscorable games.
   - **12.9 An EPD opening keeps its move counters — `I1`.** Rarog request
     2. `epd_fen_into` keeps an EPD line's four position fields and always
     appends `0 1`, which shortens a ply-aware engine's thinking on move 1

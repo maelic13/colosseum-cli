@@ -373,12 +373,16 @@ pub(crate) async fn run_match(
                 eprintln!("match output failed: {error}");
                 return ExitCode::from(3);
             }
+            // The pairs are the ones every paired figure is computed over: a
+            // pair counts when both of its games were scored.
+            let paired = PairedProgress::from_games(&report.games);
             let sample = OfficialSample {
                 committed_units: u64::from(report.games_attempted),
                 scored_games: u64::from(report.games_completed),
-                completed_pairs: u64::from(report.games_completed / 2),
-                pentanomial: [0; 5],
-                unpaired_games: u64::from(report.games_completed % 2),
+                completed_pairs: u64::from(paired.pairs),
+                pentanomial: paired.vector.counts().map(u64::from),
+                unpaired_games: u64::from(report.games_completed)
+                    .saturating_sub(paired.paired_games()),
             };
             if let Err(error) = recorder.update_sample(sample) {
                 eprintln!("run record failed: {error}");

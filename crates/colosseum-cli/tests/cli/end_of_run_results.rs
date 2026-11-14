@@ -394,3 +394,137 @@ fn a_calibration_tells_its_two_identical_sides_apart_by_side() {
     assert_eq!(by_colour[0]["as_white"]["draws"], 2);
     assert_eq!(record(&run)["results"], output["results"]);
 }
+
+/// Three openings whose scripted games make every pair a known score for
+/// engine A: each side's line answers from its own script, so a game
+/// alternates the White engine's moves with the Black engine's. From the
+/// start position both sides play Fool's Mate, Black wins both games and the
+/// pair scores 1; from the second opening A mates with either colour (2); from
+/// the third B does (0).
+const MATES: [&str; 2] = [
+    // Played by the side that wins both games: as White it mates with Qh5
+    // after 1.e4 f6 2.d4 g5; as Black it mates with Qh4 after 1.f3 e5 2.g4.
+    "e2e4 e7e5 d2d4 d8h4 d1h5",
+    // Played by the side that loses both games.
+    "f2f3 f7f6 g2g4 g7g5",
+];
+const FOOLS_MATE: &str = "f2f3 e7e5 g2g4 d8h4";
+const OPENINGS: [&str; 3] = [
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+    "r1bqkbnr/pppppppp/2n5/8/8/2N5/PPPPPPPP/R1BQKBNR w KQkq -",
+    "r1bqkbnr/pppppppp/n7/8/8/N7/PPPPPPPP/R1BQKBNR w KQkq -",
+];
+
+/// The PGN's games recounted by colour-reversed pair from engine A's side:
+/// pairs scoring 0, 0.5, 1, 1.5 and 2.
+fn pentanomial_from_pgn(pgn: &str, a: &str) -> [u64; 5] {
+    let tag = |game: &str, name: &str| {
+        let open = format!("[{name} \"");
+        let start = game.find(&open).unwrap() + open.len();
+        game[start..][..game[start..].find('"').unwrap()].to_owned()
+    };
+    let mut pairs = std::collections::BTreeMap::<u32, Vec<f64>>::new();
+    for game in pgn.split("[Event ").skip(1) {
+        let round: u32 = tag(game, "Round").parse().unwrap();
+        let white_score = match tag(game, "Result").as_str() {
+            "1-0" => 1.0,
+            "0-1" => 0.0,
+            "1/2-1/2" => 0.5,
+            other => panic!("unscored game: {other}"),
+        };
+        let a_score = if tag(game, "White") == a {
+            white_score
+        } else {
+            1.0 - white_score
+        };
+        pairs.entry(round.div_ceil(2)).or_default().push(a_score);
+    }
+    let mut counts = [0; 5];
+    for scores in pairs.values() {
+        assert_eq!(scores.len(), 2, "an incomplete pair: {pairs:?}");
+        counts[((scores[0] + scores[1]) * 2.0) as usize] += 1;
+    }
+    counts
+}
+
+#[test]
+fn a_match_keeps_its_pentanomial_and_paired_estimates() {
+    let root = tempfile::tempdir().unwrap();
+    let run = root.path().join("run");
+    let book = root.path().join("book.epd");
+    std::fs::write(&book, OPENINGS.map(|fen| format!("{fen}\n")).concat()).unwrap();
+    let script = |name: &str, [startpos, a_wins, b_wins]: [&str; 3]| {
+        let path = root.path().join(name);
+        let lines = OPENINGS
+            .iter()
+            .zip([startpos, a_wins, b_wins])
+            .map(|(fen, moves)| format!("{fen} | {moves}\n"))
+            .collect::<String>();
+        std::fs::write(&path, lines).unwrap();
+        path
+    };
+    let a = script("a.txt", [FOOLS_MATE, MATES[0], MATES[1]]);
+    let b = script("b.txt", [FOOLS_MATE, MATES[1], MATES[0]]);
+    let played = cli()
+        .arg("match")
+        .arg(fixture())
+        .arg(fixture())
+        .args(["--games", "6", "--a-label", "Alpha", "--b-label", "Beta"])
+        .arg(format!("--a-engine-arg=--script={}", a.display()))
+        .arg(format!("--b-engine-arg=--script={}", b.display()))
+        .arg("--book")
+        .arg(&book)
+        .args(["--seed", "7", "--placement", "off", "--json", "--dir"])
+        .arg(&run)
+        .output()
+        .unwrap();
+    let output = json(&played);
+    assert_eq!(output["report"]["games_completed"], 6, "{output}");
+
+    // Every pair has a known score, so the sample has spread and estimates.
+    let pgn = std::fs::read_to_string(run.join("games.pgn")).unwrap();
+    let recount = pentanomial_from_pgn(&pgn, "Alpha");
+    assert_eq!(recount.iter().sum::<u64>(), 3, "{recount:?}");
+    assert_eq!(recount.iter().filter(|&&count| count > 0).count(), 3);
+
+    // The run record's sample is that recount.
+    let stored = record(&run);
+    let sample = &stored["official_sample"];
+    assert_eq!(
+        sample["pentanomial"],
+        serde_json::json!(recount),
+        "{sample}"
+    );
+    assert_eq!(sample["completed_pairs"], 3, "{sample}");
+    assert_eq!(sample["unpaired_games"], 0, "{sample}");
+    assert_eq!(
+        output["results"]["paired"]["pentanomial"],
+        serde_json::json!(recount)
+    );
+    assert_eq!(stored["results"]["paired"], output["results"]["paired"]);
+
+    // `results.txt` carries the figures the last progress block printed.
+    let progress = |label: &str| {
+        stored["progress"]["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|field| field["label"] == label)
+            .and_then(|field| field["value"].as_str())
+            .unwrap_or_else(|| panic!("no {label} in {}", stored["progress"]))
+            .to_owned()
+    };
+    let text = std::fs::read_to_string(run.join("results.txt")).unwrap();
+    let lines = text.lines().collect::<Vec<_>>();
+    assert_eq!(
+        lines[0],
+        format!(
+            "Elo {}; nElo {} over 6 paired games",
+            progress("Elo"),
+            progress("nElo")
+        ),
+        "{text}"
+    );
+    assert_eq!(lines[1], format!("Ptnml: {}", progress("Ptnml")), "{text}");
+    assert_eq!(progress("Ptnml"), format!("{recount:?}"));
+}
