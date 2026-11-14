@@ -48,10 +48,12 @@ The maintainer owns every remote operation.
 - The squash message — the pull request's title and description, which is
   all that reaches `master` — is short and simple: an imperative title that
   says what changed ("Report the time to an SPSA stop"; a release is
-  "Release 0.6.0"), with no phase, step or plan references; then a few plain
-  lines on what and why, wrapped at 72 columns; then, after an empty line,
-  the verification, one line each ("Tests: cargo test --workspace
-  --all-targets, 1,204 passed").
+  "Release 0.6.0"), with no phase, step or plan references and no
+  pull-request number (GitHub appends " (#N)" to a squash subject: remove
+  it, and give `gh pr merge --squash` an explicit `--subject` whenever a
+  merge is not done by hand); then a few plain lines on what and why,
+  wrapped at 72 columns; then, after an empty line, the verification, one
+  line each ("Tests: cargo test --workspace --all-targets, 1,204 passed").
 - The Rust toolchain is pinned in `rust-toolchain.toml`. Never change it as
   part of other work: a toolchain update is its own pull request, "Rust
   X.Y.Z", with only the bump and the fixes its new lints need

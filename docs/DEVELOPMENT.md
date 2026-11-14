@@ -207,9 +207,12 @@ directly.
    it alone reaches `master`, so it alone has a fixed shape: a short
    imperative title that says what changed ("Report the time to an SPSA
    stop"), with no phase, step or plan references (a release is
-   "Release X.Y.Z"); a few plain lines on what and why, wrapped at 72
-   columns; then, after an empty line, the verification, one line each
-   (`Tests: cargo test --workspace --all-targets, 1,204 passed`). No AI
+   "Release X.Y.Z") and no pull-request number: GitHub appends " (#N)" to
+   a squash subject, so the merge removes it, by hand or with an explicit
+   `gh pr merge --squash --subject`; a few plain lines on what and why,
+   wrapped at 72 columns; then, after an empty line, the verification, one
+   line each (`Tests: cargo test --workspace --all-targets, 1,204
+   passed`). No AI
    attribution anywhere; `.claude/settings.json` turns Claude Code's off.
 4. **Before opening the pull request**, merge `master` into the branch if
    `master` moved, so it shows only the branch's own change.

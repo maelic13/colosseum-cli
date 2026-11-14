@@ -98,7 +98,8 @@ documentation and status evidence—then commit it before starting the next.
 Use a short imperative subject naming the outcome, preferably including the
 step identifier. Never add `Co-authored-by` or assistant-attribution trailers.
 Work happens on a short-lived branch from `master` that lands as one squash
-commit through a pull request with a short, simple title and description;
+commit through a pull request with a short, simple title and description
+(no " (#N)" pull-request number in the squash subject);
 nothing is pushed to `master` directly, and a release is an annotated `vX.Y.Z`
 tag on the merged `master` (`docs/DEVELOPMENT.md` *Delivery* and
 *Releases*). The full worktree, architecture and commit rules
