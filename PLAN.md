@@ -1849,7 +1849,7 @@ leaves the table in the commit that finishes it.
 | 12.12 | — |
 | 12.13 | — |
 | 12.14 | — |
-| 12.15 | the maintainer's sign-off on its proposal |
+| 12.15 | — |
 | 12.16 | — |
 | 12.17 | — |
 | 12.18 | the maintainer wanting the platforms |
@@ -2654,8 +2654,8 @@ a finite ETA in `spsa status`.
     on synthetic topologies; Rarog's 4T/1T ratio near 4 is the field
     check. 10.9h stays deferred.
   - **12.15 Host load: measured and reported, the wait the client's —
-    `R2`, then `I2`.** Rarog requests 6 and 10, one sampler. Proposed
-    2026-11-14 for the maintainer's sign-off. The rule it follows is
+    `R2`, then `I2`.** Rarog requests 6 and 10, one sampler. Signed off
+    by the maintainer 2026-11-14, with no wait by default. The rule it follows is
     12.11's: the CLI measures and reports, the client decides. The CLI
     alone knows the run's game CPUs and has the per-platform adapters, so
     the measurement is the CLI's. Whether a busy host is worth waiting for
@@ -2681,7 +2681,7 @@ a finite ETA in `spsa status`.
       (default 20%) outside the run. `--on-busy start|refuse` decides at
       the deadline: start with the busy reading recorded and flagged
       (default), or exit before any game with a documented exit code.
-      Proposed default `--idle-wait 0`, no wait. A default wait would add
+      The default is `--idle-wait 0`, no wait: a default wait would add
       up to its deadline to every scripted run, test and CI job on a loaded
       machine without anyone asking for it. Rarog passes, say,
       `--idle-wait 600 --on-busy refuse`, and the desktop application its
@@ -2695,8 +2695,9 @@ a finite ETA in `spsa status`.
     - Run files take the same keys. Like the progress options, none of
       them is part of the run's identity.
 
-    Open for the sign-off: the defaults above, and above all whether
-    `--idle-wait` defaults to 0. Tests: a CPU-bound process started on one
+    The `R2` part confirms what each platform's adapter can measure, and
+    the remaining defaults against a real disturbed run, before code.
+    Tests: a CPU-bound process started on one
     game CPU partway through is flagged and named, and an undisturbed run
     is not; a run started beside a busy process with `--idle-wait` waits,
     starts within seconds of the process ending, and with `--on-busy

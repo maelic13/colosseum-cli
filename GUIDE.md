@@ -284,8 +284,7 @@ in short:
 1. **CLI 0.6.0** — the engine projects' requests (Phase 12(d)): 12.6 (done),
    then 12.7–12.18 in the order of work. Small steps share a branch and one
    pull request, one commit each (12.6–12.10 on `engine-requests`); 12.11,
-   12.12, 12.13 and 12.15 have their own, and 12.15 starts with
-   the maintainer's sign-off on its proposal. Then the release
+   12.12, 12.13 and 12.15 have their own. Then the release
    pull request "Release 0.6.0" and the `v0.6.0` tag, over the steps the
    maintainer puts in it. It is also the first full run of the delivery
    path.
