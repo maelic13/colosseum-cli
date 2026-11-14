@@ -342,3 +342,20 @@ read-only CI/release drift gate. Edit parser help rather than the generated file
 GitHub renders the documents from each release tag, and CLI archives contain
 the same guide for offline use. The archive's concise `README.md` directs users
 to `docs/cli/README.md`; release notes link to the tagged online copy.
+
+## Maintainer documents
+
+`GUIDE.md`'s board is generated from `PLAN.md`'s step heads and its order of
+work, by a Python script on the standard library (new tools are Python, so
+they run on every platform):
+
+```bash
+python tools/guide_board.py
+python tools/guide_board.py --check
+python tools/guide_board.py --self-test
+```
+
+The first rewrites the board between its markers; the second is the
+read-only CI drift gate (`ci.yml` runs it with `python3`), and the third
+tests the generator itself. Edit `PLAN.md`, never the board. The grammar it
+reads is in `AGENTS.md` *Documentation ownership*.
