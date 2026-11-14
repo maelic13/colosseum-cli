@@ -13,6 +13,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `spsa status` (`eta.stop_point` in JSON). Both come from the same
   observed rate; a resume with a new stop reports the new one
 
+### Fixed
+- With a different clock for each side, an engine is told its opponent's
+  own increment: `winc` comes from White's control and `binc` from
+  Black's. Before, the engine to move was sent its own increment as both.
+  Games where both sides have the same clock are unchanged
+
 ### Changed
 - Colosseum CLI has its own repository,
   [maelic13/colosseum-cli](https://github.com/maelic13/colosseum-cli), and

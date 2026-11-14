@@ -7,6 +7,7 @@
 mod architecture;
 mod calibration;
 mod chess960;
+mod clock_increments;
 mod command_line;
 mod cpu_allocation;
 mod end_of_run_results;

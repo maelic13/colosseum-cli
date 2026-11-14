@@ -777,7 +777,8 @@ async fn play(
         let position = build_uci_position(spec.start_fen.as_deref(), &uci_moves);
 
         let (limits, deadline) = move_limits(
-            time_control_for(&spec, mover),
+            &spec.white_time_control,
+            &spec.black_time_control,
             &clocks,
             mover,
             time_margin_for(&spec, mover),
@@ -1055,7 +1056,8 @@ async fn play(
             ponder_moves.push(hint_uci.clone());
             let ponder_pos = build_uci_position(spec.start_fen.as_deref(), &ponder_moves);
             let (ponder_limits, _) = move_limits(
-                time_control_for(&spec, mover),
+                &spec.white_time_control,
+                &spec.black_time_control,
                 &clocks,
                 mover,
                 time_margin_for(&spec, mover),
@@ -1366,24 +1368,32 @@ impl Clocks {
 }
 
 /// Build the `go` limits and the hard wall-clock deadline for the side to move.
+///
+/// The mover's own control decides the kind of limit. On a clock, each side's
+/// remaining time and increment come from that side's own control, so with
+/// unequal clocks the mover is told its opponent's real increment.
 fn move_limits(
-    tc: &TimeControl,
+    white_tc: &TimeControl,
+    black_tc: &TimeControl,
     clocks: &Clocks,
     mover: Color,
     tolerance: Duration,
 ) -> (GoLimits, Duration) {
+    let tc = match mover {
+        Color::White => white_tc,
+        Color::Black => black_tc,
+    };
     match tc {
         TimeControl::PerMove { ms } => {
             let mt = Duration::from_millis(*ms);
             (GoLimits::MoveTime(mt), mt + tolerance)
         }
         TimeControl::SuddenDeath { .. } | TimeControl::Increment { .. } => {
-            let inc = tc.increment();
             let limits = GoLimits::Clock {
                 wtime: clocks.white,
                 btime: clocks.black,
-                winc: inc,
-                binc: inc,
+                winc: white_tc.increment(),
+                binc: black_tc.increment(),
             };
             // The mover must answer within their remaining time (plus IO grace).
             (limits, clocks.remaining(mover) + tolerance)
@@ -1770,7 +1780,7 @@ mod tests {
     fn per_move_limits_are_constant_per_move() {
         let tc = TimeControl::PerMove { ms: 200 };
         let clocks = Clocks::new(&tc, &tc);
-        let (limits, deadline) = move_limits(&tc, &clocks, Color::White, TOL);
+        let (limits, deadline) = move_limits(&tc, &tc, &clocks, Color::White, TOL);
         assert_eq!(limits, GoLimits::MoveTime(Duration::from_millis(200)));
         assert_eq!(deadline, Duration::from_millis(250));
     }
@@ -1781,7 +1791,7 @@ mod tests {
         let mut clocks = Clocks::new(&tc, &tc);
         assert_eq!(clocks.white, Duration::from_millis(1000));
 
-        let (limits, deadline) = move_limits(&tc, &clocks, Color::White, TOL);
+        let (limits, deadline) = move_limits(&tc, &tc, &clocks, Color::White, TOL);
         assert_eq!(
             limits,
             GoLimits::Clock {
@@ -1812,6 +1822,50 @@ mod tests {
         // An overrun beyond remaining plus margin forfeits before increment.
         assert!(!clocks.accept_and_charge(&tc, Color::Black, Duration::from_millis(751), TOL));
         assert_eq!(clocks.black, Duration::from_millis(700));
+    }
+
+    #[test]
+    fn unequal_clocks_send_each_side_its_own_increment() {
+        let white = TimeControl::Increment {
+            base_ms: 10_000,
+            inc_ms: 100,
+        };
+        let black = TimeControl::Increment {
+            base_ms: 11_270,
+            inc_ms: 113,
+        };
+        let clocks = Clocks::new(&white, &black);
+        let expected = GoLimits::Clock {
+            wtime: Duration::from_millis(10_000),
+            btime: Duration::from_millis(11_270),
+            winc: Duration::from_millis(100),
+            binc: Duration::from_millis(113),
+        };
+        // Either side to move is told both increments as they are, and its
+        // deadline is its own remaining time.
+        let (limits, deadline) = move_limits(&white, &black, &clocks, Color::White, TOL);
+        assert_eq!(
+            (limits, deadline),
+            (expected, Duration::from_millis(10_050))
+        );
+        let (limits, deadline) = move_limits(&white, &black, &clocks, Color::Black, TOL);
+        assert_eq!(
+            (limits, deadline),
+            (expected, Duration::from_millis(11_320))
+        );
+
+        // Colours reversed, the increments follow the controls.
+        let clocks = Clocks::new(&black, &white);
+        let (limits, _) = move_limits(&black, &white, &clocks, Color::White, TOL);
+        assert_eq!(
+            limits,
+            GoLimits::Clock {
+                wtime: Duration::from_millis(11_270),
+                btime: Duration::from_millis(10_000),
+                winc: Duration::from_millis(113),
+                binc: Duration::from_millis(100),
+            }
+        );
     }
 
     #[test]
@@ -1846,12 +1900,12 @@ mod tests {
     fn nodes_and_depth_use_fixed_limits_and_safety_deadline() {
         let nodes = TimeControl::Nodes { nodes: 50_000 };
         let clocks = Clocks::new(&nodes, &nodes);
-        let (limits, deadline) = move_limits(&nodes, &clocks, Color::White, TOL);
+        let (limits, deadline) = move_limits(&nodes, &nodes, &clocks, Color::White, TOL);
         assert_eq!(limits, GoLimits::Nodes(50_000));
         assert_eq!(deadline, FIXED_SEARCH_DEADLINE);
 
         let depth = TimeControl::Depth { depth: 12 };
-        let (limits, deadline) = move_limits(&depth, &clocks, Color::Black, TOL);
+        let (limits, deadline) = move_limits(&depth, &depth, &clocks, Color::Black, TOL);
         assert_eq!(limits, GoLimits::Depth(12));
         assert_eq!(deadline, FIXED_SEARCH_DEADLINE);
     }

@@ -38,6 +38,9 @@ Each side has an independent time control. Select at most one mode per side:
 | Fixed nodes | `--a-nodes N` | `--b-nodes N` |
 | Fixed depth | `--a-depth N` | `--b-depth N` |
 
+Every `go` on a clock tells the engine both sides' own time and increment:
+`wtime` and `winc` from White's control, `btime` and `binc` from Black's.
+
 With no selection, that side uses `3000 ms + 30 ms` per move. The per-side
 `--a-margin-ms` and `--b-margin-ms` values are forfeit tolerances only; they are
 not sent to the engines. The default is 20 ms: a move forfeits when it arrives

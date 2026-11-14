@@ -1841,7 +1841,6 @@ leaves the table in the commit that finishes it.
 
 | Step | Waits for |
 |---|---|
-| 12.7 | — |
 | 12.8 | — |
 | 12.5 | — |
 | 12.9 | — |
@@ -2494,14 +2493,20 @@ a finite ETA in `spsa status`.
     to 3, then run to the end asserts the line in the block and `run.log`
     and `eta.stop_point` in `spsa status`, and their absence without a
     stop.
-  - **12.7 `winc` and `binc` from each side's own control — `I1`.** Rarog
-    request 11. The runner's `move_limits` sends the mover's own increment
-    as both `winc` and `binc`, so with a clock per side the engine to move
-    is told its opponent has its own increment; the remaining times are
-    right. Send `winc` from White's control and `binc` from Black's. Equal
-    clocks are unchanged. A test plays 10000+100 against 11270+113 and
-    asserts `winc 100 binc 113` on every `go`, reversed when the colours
-    are.
+  - **12.7 `winc` and `binc` from each side's own control — `I1`, DONE
+    2026-11-14.** Rarog request 11. The runner's `move_limits` sent the
+    mover's own increment as both `winc` and `binc`, so with a clock per
+    side the engine to move is told its opponent has its own increment; the
+    remaining times are right. Send `winc` from White's control and `binc`
+    from Black's. Equal clocks are unchanged. A test plays 10000+100 against
+    11270+113 and asserts `winc 100 binc 113` on every `go`, reversed when
+    the colours are. Done: `move_limits` takes both sides' controls, the
+    mover's own deciding the kind of limit; the runner's unit test and the
+    CLI test `clock_increments` (the fixture's command log, both colours,
+    failing on the old code with `winc 100 binc 100`) cover it. Equal clocks
+    send what they did. The parity matrix plays depth 1, whose `go` is
+    unchanged, and the oracle replay is the required suite's statistics
+    fixtures, which pass.
   - **12.8 A fixed match's score in `results.txt` and the run record —
     `I1`.** Rarog request 12. `match` writes `official_sample.pentanomial`
     as five zeros although its checkpoint holds the counts, and
