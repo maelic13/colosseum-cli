@@ -1821,7 +1821,7 @@ never changes the active model by itself.
 | 12.5 | `I1` |
 | 12.6 | `I1` (completed) |
 | 12.7–12.10 | `I1` |
-| 12.11 | `R2` for the definitions and the policy, then `I2` |
+| 12.11 | `R2` for the definitions, then `I2` |
 | 12.12 | `I2` |
 | 12.13 | `R2` for the design, then `I2` |
 | 12.14 | `I2` |
@@ -1845,7 +1845,7 @@ leaves the table in the commit that finishes it.
 | 12.8 | — |
 | 12.9 | — |
 | 12.10 | — |
-| 12.11 | the maintainer's decisions on its open questions |
+| 12.11 | — |
 | 12.12 | — |
 | 12.13 | — |
 | 12.14 | — |
@@ -2443,8 +2443,8 @@ a finite ETA in `spsa status`.
     ignores its budget is visible. Tests: a fixture engine that ignores its
     budget is named with its count of moves over; a compliant run reports
     none.
-  - **12.11 SPSA gradient and gain reads, and the checkpoint verdict —
-    `R2`, then `I2`.** Basilisk's request and Rarog request 9. Both
+  - **12.11 SPSA gradient and gain reads — `R2`, then `I2`.** Basilisk's
+    request and the measurement half of Rarog request 9. Both
     projects judge whether a tune still has gradient with their shared
     `tools/spsa_read.py`, which regenerates the runner's ChaCha12 sign
     stream and re-derives every move from the schedule, so it depends on
@@ -2503,13 +2503,31 @@ a finite ETA in `spsa status`.
     CLI, the caller reading `spsa read --json` and pausing with
     `--stop-after-iteration`.
 
-    Open, settled with the maintainer before code: whether the verdict and
-    self-stopping checkpoints belong in the CLI at all, and if so under
-    what stated rule; whether the reads are a new `spsa read` or part of
-    `spsa status`; and the reference the numbers must equal (`spsa_read.py`
-    at a pinned revision, with its `test_spsa_read.py` cases and the runs
-    Basilisk exports as committed fixtures, reproduced to the digit). The
-    `R2` part settles these and pins each definition before any code.
+    Decided with the maintainer, 2026-11-14:
+    - *What is general goes in the CLI; what is not stays in the projects.*
+      The window's live/quiet test is general: a test of "no gradient in
+      the window" with a known null, like LOS. Live means some `|z|` reaches
+      the familywise line or the excess reaches its line; both lines are
+      stated parameters (family alpha 0.05, excess 2 null SD by default).
+      It is reported with what quiet rules out (no coordinate worth more
+      than the line times its standard error, and the forecast's upper
+      reading). A stop verdict is not general. Read at a checkpoint grid,
+      it becomes a sequential decision whose error rates depend on the grid
+      and are computed by nobody. The ceiling, the acceptance of faults, and
+      what a rail or a stop means (writing theta, registering a range again)
+      are project process. `spsa status` already promises never to advise
+      continuing or abandoning a tune. So the CLI has no checkpoint grid,
+      CONTINUE/STOP verdict or self-stopping run file. Rarog keeps its rule
+      7c verdict in its wrapper, reading `spsa read --json` and pausing
+      with `--stop-after-iteration`. Request 9's policy half is declined
+      here, and its measurement half is this step.
+    - *A new command.* `spsa read`, with its own versioned schema;
+      `spsa status` stays the lifecycle view.
+    - *The reference.* `spsa_read.py` at a pinned revision, with its
+      `test_spsa_read.py` cases and the runs Basilisk exports committed as
+      fixtures, reproduced to the digit. The `R2` part pins each definition
+      against them before any code.
+
     Tests: golden vectors on small synthetic runs, a planted gradient
     reading live and over the line and none reading quiet, with `z`
     variance about 1 over many seeds; the gain read's mean about 0 over
