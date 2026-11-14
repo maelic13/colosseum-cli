@@ -1820,11 +1820,12 @@ never changes the active model by itself.
 | 12.5 | `I1` |
 | 12.6 | `I1` (completed) |
 | 12.7–12.10 | `I1` |
+| 12.10.1 | `R2` for the definitions, then `I2` |
 | 12.11 | `I2` |
 | 12.12 | `R2` for the design, then `I2` |
 | 12.13–12.14 | `I2` |
 | 12.15–12.17 | `I1` |
-| 12.18 | `R2` for the statistic, then `I1` |
+| 12.18 | `R2` for the policy decision, then `I1` |
 | 12.19 | `M` |
 
 Completed steps keep the class recorded in their phase record.
@@ -2349,7 +2350,9 @@ a finite ETA in `spsa status`.
   (thirteen requests, each proved from 0.5.0's artifacts), plus what the
   maintainer adds. All thirteen became steps 12.7–12.19 on 2026-11-14,
   numbered in the order of work rather than Rarog's; each names its
-  request, and the request's evidence stays in Rarog. The order: four
+  request, and the request's evidence stays in Rarog. Basilisk's request
+  of the same day, an SPSA gradient and gain read, is 12.10.1; it is the
+  measurement half of Rarog's request 9, which 12.18 now builds on. The order: four
   small corrections first, which are also all Rarog's next oracle read
   (RAR-O09) needs from the CLI; then Rarog's two priorities,
   moves-per-period clocks and barrier-free SPSA; then the measurement
@@ -2358,8 +2361,8 @@ a finite ETA in `spsa status`.
   (12.7, 12.9, 12.11, 12.12, 12.13) repeats the oracle replay and parity
   checks and says so in the changelog. Which steps ship in 0.6.0 and which
   in a later minor release is the maintainer's choice; small steps may
-  share one branch and one pull request, a large one (12.11, 12.12, 12.14)
-  has its own.
+  share one branch and one pull request, a large one (12.10.1, 12.11,
+  12.12, 12.14) has its own.
   - **12.6 The time to an SPSA stop point.** When a tune runs with
     `--stop-after-iteration N` below its total (stop at 2,000 of 6,000
     iterations), every progress report — the console block and its
@@ -2406,6 +2409,61 @@ a finite ETA in `spsa status`.
     than that side's budget, so an engine that overshoots or ignores its
     budget is visible. Tests: a fixture engine that ignores its budget is
     named with its count of moves over; a compliant run reports none.
+  - **12.10.1 `spsa read`: the gradient and gain reads** (Basilisk request,
+    2026-11-14, `R2`, then `I2`). Basilisk and Rarog judge whether a tune
+    still has gradient with their shared `tools/spsa_read.py`, which
+    regenerates the runner's ChaCha12 sign stream and re-derives every
+    move from the schedule, so it depends on the CLI's internals and would
+    break silently if either changed. The runner owns the signs, the
+    schedule and the centres, so it computes the reads. A read-only
+    command, safe while a tune runs as `spsa history` is:
+    `spsa read <run-dir> [--from K0] [--to K1] [--json] [--null-reps N]
+    [--null-seed S] [--gain-segment G] [--forecast-span F]`; the window
+    defaults to the last 1,000 completed iterations (all, if fewer), then
+    40, 1, 500 and 2,000. Measurement only: no checkpoint grid, stop
+    verdict or project threshold. With `delta[k][i]` the sign drawn for
+    coordinate `i` at iteration `k` and `D[k]` the plus side's wins minus
+    losses:
+    - per coordinate `z[i] = Σ delta[k][i]·D[k] / sqrt(Σ D[k]²)` (mean 0,
+      variance exactly 1 without gradient, because the runner drew the
+      signs), and the Elo across one perturbation, `695 / (2 ×
+      games_per_iteration)` per unit of mean `D`, with its standard error;
+    - the familywise line for `n` coordinates at family alpha 0.05,
+      `Φ⁻¹(1 − (1 − (1 − α)^(1/n)) / 2)`, the largest `|z|` and the
+      coordinates over it; the excess `Σ z² − n` in units of its null SD
+      `sqrt(2n)`;
+    - the cross-fitted gain read: in each segment of `G` iterations, the
+      gradient estimated on the even iterations times each coordinate's
+      actual move summed over the odd ones, and the reverse, summed over
+      coordinates, in Elo, since iteration 0 and in the window, each with
+      the SD of `N` seeded re-draws with every sign randomised;
+    - an optional forecast, labelled an upper bound: the next `F`
+      iterations' gain from the window's excess held constant through the
+      remaining schedule (`ratio_k × c_k²` against the window's mean
+      `c_k²`), with its null SD;
+    - rails: a centre within one current perturbation of a bound while its
+      `z` points outward, with the distance, the `z` and the share of
+      iterations on which either arm was clamped; the run's own fault
+      counters;
+    - integrity: every move re-derived as `r_k · c_k · D · delta` (clamped
+      where it was) against the journal, the worst deviation reported; a
+      mismatch is an error, not a warning.
+
+    Text is a summary block and one row per coordinate (name, `z`, Elo
+    across a perturbation, centre, start, rounded value, clamp share, rail
+    flag); `--json` is the same under schema `colosseum-spsa-read-v1` with
+    stable field names; exit 0 for a read, non-zero for an unreadable or
+    inconsistent run. Tests: golden vectors on small synthetic runs, a
+    planted gradient reading live and over the line and none reading
+    quiet, with `z` variance about 1 over many seeds; the gain read's mean
+    about 0 over sign-randomised runs; a tampered journal or a wrong seed
+    failing loudly; and agreement fixtures Basilisk exports from recorded
+    runs, reproduced to the digit. No change to `spsa` runs, `spsa
+    history` or the run-directory format; the user documentation and the
+    changelog state the sign-stream and schedule definitions the read
+    relies on, so a change to either becomes a versioned break. The `R2`
+    part pins each definition against `spsa_read.py` and the fixtures
+    before any code.
   - **12.11 Moves-per-period time controls** (request 4, `I2`). Per side,
     N moves in T, repeating, with an optional increment: `go` carries
     `movestogo` with the moves left in the period, the clock is refilled
@@ -2428,7 +2486,8 @@ a finite ETA in `spsa status`.
     order updates were applied, so Rarog's `spsa_read.py` still rebuilds
     every centre — resume from the run directory, the gain schedule stated
     per update (scaled in the run file if the unit changes), and the
-    synchronous mode, unchanged, as an option. (ad)'s fit-quality evidence
+    synchronous mode, unchanged, as an option; `spsa read` (12.10.1) reads
+    a barrier-free run, with its unit stated. (ad)'s fit-quality evidence
     is required before it becomes the default. Check: under RAR-M88's
     conditions slot fill above 95% and at least 1.15× its games per hour;
     a synchronous run identical to 0.5.0's. 10.9p stays deferred behind
@@ -2465,13 +2524,17 @@ a finite ETA in `spsa status`.
     games, with the threshold and persistence stated. A test on a
     committed gauntlet PGN equals Rarog's `tools/diag/conversion_audit.py`.
   - **12.18 The SPSA checkpoint verdict** (request 9, `R2`, then `I1`).
-    `spsa status` prints the checkpoint verdict of Rarog's per-coordinate
-    gradient test — quiet, live, a centre pushed outward at a bound, or
-    faults — and a run file can register checkpoints, so a tune stops
-    itself at a quiet one and continues on a live one. The statistic must
-    equal `spsa_read.py`'s exactly (shared with Basilisk), with
-    `test_spsa_read.py`'s synthetic cases as committed fixtures. After
-    12.12, because a barrier-free unit changes what an iteration is.
+    Rarog asks for `spsa status` to print the checkpoint verdict of its
+    per-coordinate gradient test — quiet, live, a centre pushed outward at
+    a bound, or faults — and for a run file to register checkpoints, so a
+    tune stops itself at a quiet one and continues on a live one. The
+    statistics are 12.10.1's; this step adds only the policy. Basilisk's
+    request keeps that policy out of the CLI (a caller reads `spsa read
+    --json` and stops with `--stop-after-iteration`), so the `R2` part is
+    first a maintainer decision: a stated verdict rule a run file
+    registers, or the policy left to the calling projects and this step
+    closed. After 12.10.1 and 12.12, because a barrier-free unit changes
+    what an iteration is.
   - **12.19 Release builds for Linux ARM64 and Intel macOS** (request 3,
     `M`). `aarch64-unknown-linux-gnu` and `x86_64-apple-darwin` in the
     release matrix if the maintainer wants those platforms, each asset
