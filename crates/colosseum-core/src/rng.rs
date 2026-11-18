@@ -16,6 +16,8 @@ pub mod stream_names {
     pub const SPRT_LENGTH_SIMULATION: &str = "sprt-length-simulation";
     pub const POSITION_ORDER: &str = "position-order";
     pub const WARMUP_SCHEDULING: &str = "warmup-scheduling";
+    /// The sign re-draws of `spsa read`'s null gain reads.
+    pub const SPSA_READ_NULL: &str = "spsa-read-null";
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
