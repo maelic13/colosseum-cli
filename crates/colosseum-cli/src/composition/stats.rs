@@ -179,6 +179,9 @@ pub(crate) fn run_stats(command: StatsCommand, machine: bool) -> ExitCode {
                     if let Some(line) = overhead_text(&engine.harness_overhead_ms) {
                         println!("{}: {line}", engine.engine);
                     }
+                    if let Some(budget) = &engine.node_budget {
+                        println!("{}: {}", engine.engine, node_budget_text(budget));
+                    }
                 }
                 if let Some(phases) = &report.game_phases {
                     println!(
@@ -239,7 +242,12 @@ pub(crate) fn colour_lines(by_colour: &[crate::stats_replay::EngineColourResults
 /// tournament's standings and pairs, how the games ended, the faults and each
 /// engine's search.
 pub(crate) fn run_results_lines(results: &crate::stats_replay::RunResults) -> Vec<String> {
-    let mut lines = colour_lines(&results.by_colour);
+    let mut lines = results
+        .paired
+        .as_ref()
+        .map(paired_score_lines)
+        .unwrap_or_default();
+    lines.extend(colour_lines(&results.by_colour));
     if let Some(tournament) = &results.tournament {
         lines.extend(tournament_lines(tournament));
     }
@@ -284,6 +292,63 @@ pub(crate) fn run_results_lines(results: &crate::stats_replay::RunResults) -> Ve
             parts.push(format!("{:.2}M nodes per second", nps / 1e6));
         }
         lines.push(format!("{}: {}", engine.engine, parts.join("; ")));
+        if let Some(budget) = &engine.node_budget {
+            lines.push(format!("{}: {}", engine.engine, node_budget_text(budget)));
+        }
+    }
+    lines
+}
+
+/// A side's moves against its node budget in one line:
+/// `node budget 5,000: largest 5,000 nodes reported; 0 of 120 moves over`.
+pub(crate) fn node_budget_text(metric: &crate::pgn_telemetry::NodeBudgetMetric) -> String {
+    let largest = metric.max_nodes.map_or_else(
+        || "no node count reported".to_owned(),
+        |nodes| {
+            let noun = if nodes == 1 { "node" } else { "nodes" };
+            format!("largest {} {noun} reported", grouped(nodes))
+        },
+    );
+    let unreported = metric.moves_with_budget - metric.reported_moves;
+    let unreported = if unreported > 0 {
+        format!(", {} reported no nodes", grouped(unreported.into()))
+    } else {
+        String::new()
+    };
+    format!(
+        "node budget {}: {largest}; {} of {} moves over{unreported}",
+        grouped(metric.budget),
+        grouped(metric.over_budget.into()),
+        grouped(metric.moves_with_budget.into()),
+    )
+}
+
+/// A two-engine run's paired score in the words its progress and final
+/// report use: `Elo -2.1 +/- 7.5; nElo -6.2 +/- 15.2 over 2000 paired games`,
+/// then `Ptnml: [24, 252, 474, 221, 29]`, and the counted games outside a
+/// complete pair when there are any.
+fn paired_score_lines(paired: &crate::stats_replay::PairedScore) -> Vec<String> {
+    let paired_games = progress::plural(u64::from(paired.complete_pairs) * 2, "paired game");
+    let estimates = match (paired.elo, paired.normalized_elo) {
+        (Some(elo), Some(normalized)) => format!(
+            "Elo {}; nElo {} over {paired_games}",
+            progress::estimate(elo.elo, elo.lower, elo.upper),
+            progress::estimate(normalized.elo, normalized.lower, normalized.upper),
+        ),
+        _ => format!(
+            "Elo and nElo unavailable: {}",
+            paired
+                .estimates_unavailable
+                .as_deref()
+                .unwrap_or("no estimate")
+        ),
+    };
+    let mut lines = vec![estimates, format!("Ptnml: {:?}", paired.pentanomial)];
+    if paired.unpaired_games > 0 {
+        lines.push(format!(
+            "unpaired: {} outside a complete pair, in no paired figure",
+            progress::plural(u64::from(paired.unpaired_games), "counted game")
+        ));
     }
     lines
 }

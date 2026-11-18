@@ -3,8 +3,10 @@
 //! positions ([`ResolvedOpening`]) the scheduler assigns to encounters.
 //!
 //! - **EPD**: each non-empty, non-comment line is one position. The four required
-//!   EPD fields (`board stm castling ep`) are completed into a full FEN; any
-//!   trailing opcodes are ignored.
+//!   EPD fields (`board stm castling ep`) are completed into a full FEN with the
+//!   line's move counters: two integers right after the four fields (a FEN's
+//!   halfmove clock and fullmove number), else the `hmvc` and `fmvn` opcodes,
+//!   else `0 1`. Other opcodes are ignored.
 //! - **PGN**: each game's first `plies` half-moves form one opening line, replayed
 //!   from the game's start position (the `FEN` tag if present, else the standard
 //!   start). The opening is stored as `start_fen` + the UCI moves to pre-play, so
@@ -72,6 +74,41 @@ impl ResolvedOpening {
 pub struct OpeningList {
     buffer: String,
     entries: Vec<CompactOpening>,
+    move_counters: MoveCounterSources,
+}
+
+/// How many of a book's EPD positions took their move counters from each
+/// source: the two integers after the four EPD fields, the `hmvc` and `fmvn`
+/// opcodes, or the default `0 1`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MoveCounterSources {
+    pub fields: usize,
+    pub opcodes: usize,
+    pub default: usize,
+}
+
+impl MoveCounterSources {
+    fn count(&mut self, source: CounterSource) {
+        match source {
+            CounterSource::Fields => self.fields += 1,
+            CounterSource::Opcodes => self.opcodes += 1,
+            CounterSource::Default => self.default += 1,
+        }
+    }
+
+    fn add(&mut self, other: Self) {
+        self.fields += other.fields;
+        self.opcodes += other.opcodes;
+        self.default += other.default;
+    }
+}
+
+/// Where one EPD line's halfmove clock and fullmove number came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CounterSource {
+    Fields,
+    Opcodes,
+    Default,
 }
 
 /// Where one opening's parts sit in the buffer, laid out as
@@ -111,6 +148,13 @@ impl OpeningList {
 
     fn part(&self, start: usize, len: u32) -> &str {
         &self.buffer[start..start + len as usize]
+    }
+
+    /// Where the EPD positions' move counters came from, over every position
+    /// the book yielded; all zero for a PGN book.
+    #[must_use]
+    pub fn move_counters(&self) -> MoveCounterSources {
+        self.move_counters
     }
 
     /// The opening's starting FEN; `None` for the standard start position.
@@ -187,6 +231,7 @@ impl OpeningList {
 
     /// Append another list after this one, keeping both orders.
     fn extend(&mut self, other: Self) {
+        self.move_counters.add(other.move_counters);
         let shift = self.buffer.len();
         self.buffer.push_str(&other.buffer);
         self.entries
@@ -314,7 +359,7 @@ fn parse_epd_in_chunks(text: &str, threads: usize) -> OpeningList {
 fn parse_epd_lines(text: &str) -> OpeningList {
     let mut list = OpeningList {
         buffer: String::with_capacity(text.len()),
-        entries: Vec::new(),
+        ..OpeningList::default()
     };
     let mut fen = String::new();
     for line in text.lines() {
@@ -322,8 +367,9 @@ fn parse_epd_lines(text: &str) -> OpeningList {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        if epd_fen_into(line, &mut fen) {
+        if let Some(source) = epd_fen_into(line, &mut fen) {
             list.push(Some(&fen), &[], None);
+            list.move_counters.count(source);
         }
     }
     list
@@ -332,32 +378,105 @@ fn parse_epd_lines(text: &str) -> OpeningList {
 /// Complete an EPD line into a full, validated FEN string.
 ///
 /// EPD carries `board stm castling ep` plus optional opcodes; FEN additionally
-/// needs halfmove and fullmove counters, which we default to `0 1`.
+/// needs the halfmove clock and the fullmove number, taken as
+/// [`epd_counters`] finds them.
 fn epd_to_fen(line: &str) -> Option<String> {
     let mut fen = String::new();
-    epd_fen_into(line, &mut fen).then_some(fen)
+    epd_fen_into(line, &mut fen).map(|_| fen)
 }
 
-/// Write the FEN of an EPD line into `fen` and say whether it is a valid
-/// standard-chess position.
-fn epd_fen_into(line: &str, fen: &mut String) -> bool {
+/// Write the FEN of an EPD line into `fen`, and say where its move counters
+/// came from when it is a valid standard-chess position.
+fn epd_fen_into(line: &str, fen: &mut String) -> Option<CounterSource> {
     fen.clear();
-    let mut fields = line.split_whitespace();
+    let mut rest = line;
     for index in 0..4 {
-        let Some(field) = fields.next() else {
-            return false;
-        };
+        let (field, after) = next_token(rest)?;
         if index > 0 {
             fen.push(' ');
         }
         fen.push_str(field);
+        rest = after;
     }
-    fen.push_str(" 0 1");
+    let (halfmoves, fullmoves, source) = epd_counters(rest);
+    fen.push(' ');
+    fen.push_str(halfmoves);
+    fen.push(' ');
+    fen.push_str(fullmoves);
     // Validate by round-tripping through shakmaty.
     fen.parse::<Fen>()
         .ok()
         .and_then(|f| f.into_position::<Chess>(CastlingMode::Standard).ok())
-        .is_some()
+        .map(|_| source)
+}
+
+/// The first whitespace-separated token of `text` and what follows it.
+fn next_token(text: &str) -> Option<(&str, &str)> {
+    let text = text.trim_start();
+    if text.is_empty() {
+        return None;
+    }
+    let end = text.find(char::is_whitespace).unwrap_or(text.len());
+    Some((&text[..end], &text[end..]))
+}
+
+/// An EPD line's halfmove clock and fullmove number, from what follows its
+/// four fields: two integers there are a FEN's counters; otherwise the
+/// `hmvc` and `fmvn` opcodes, either one defaulting when the other is given
+/// alone; otherwise `0 1`.
+fn epd_counters(rest: &str) -> (&str, &str, CounterSource) {
+    let is_count = |token: &str| !token.is_empty() && token.bytes().all(|b| b.is_ascii_digit());
+    if let Some((halfmoves, after)) = next_token(rest)
+        && let Some((fullmoves, _)) = next_token(after)
+        && is_count(halfmoves)
+        && is_count(fullmoves)
+    {
+        return (halfmoves, fullmoves, CounterSource::Fields);
+    }
+    // Most lines of a large book name neither opcode; they skip the scan.
+    if !rest.contains("hmvc") && !rest.contains("fmvn") {
+        return ("0", "1", CounterSource::Default);
+    }
+    let (mut halfmoves, mut fullmoves) = (None, None);
+    for operation in epd_operations(rest) {
+        let mut words = operation.split_whitespace();
+        let (Some(opcode), Some(operand), None) = (words.next(), words.next(), words.next()) else {
+            continue;
+        };
+        match opcode {
+            "hmvc" => halfmoves = Some(operand),
+            "fmvn" => fullmoves = Some(operand),
+            _ => {}
+        }
+    }
+    if halfmoves.is_none() && fullmoves.is_none() {
+        return ("0", "1", CounterSource::Default);
+    }
+    (
+        halfmoves.unwrap_or("0"),
+        fullmoves.unwrap_or("1"),
+        CounterSource::Opcodes,
+    )
+}
+
+/// The `;`-terminated operations of an EPD line's opcode part; a `;` inside
+/// a quoted operand does not end one.
+fn epd_operations(text: &str) -> Vec<&str> {
+    let mut quoted = false;
+    let mut start = 0;
+    let mut operations = Vec::new();
+    for (index, byte) in text.bytes().enumerate() {
+        match byte {
+            b'"' => quoted = !quoted,
+            b';' if !quoted => {
+                operations.push(&text[start..index]);
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    operations.push(&text[start..]);
+    operations
 }
 
 /// Parse PGN games, taking the first `plies` half-moves of each as an opening.
@@ -833,6 +952,58 @@ r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - bm Nf6;
         assert!(openings.get(0).moves.is_empty());
         // The second line's trailing opcode is ignored; FEN is still valid.
         assert!(position_from_fen(openings.start_fen(1).unwrap()).is_some());
+    }
+
+    #[test]
+    fn an_epd_line_keeps_its_move_counters() {
+        const BOARD: &str = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq -";
+        let cases = [
+            // A FEN's two counters, with or without opcodes after them.
+            ("2 4", "2 4", CounterSource::Fields),
+            ("12 31 bm Bb5; hmvc 0;", "12 31", CounterSource::Fields),
+            // The opcodes, in either order, and each alone.
+            ("hmvc 3; fmvn 7;", "3 7", CounterSource::Opcodes),
+            ("id \"x\"; fmvn 9; hmvc 1", "1 9", CounterSource::Opcodes),
+            ("fmvn 5;", "0 5", CounterSource::Opcodes),
+            ("hmvc 6;", "6 1", CounterSource::Opcodes),
+            // A quoted operand is not an operation.
+            ("id \"a; hmvc 9; fmvn 9\";", "0 1", CounterSource::Default),
+            // One integer is not a pair of counters.
+            ("5 bm Bb5;", "0 1", CounterSource::Default),
+            ("", "0 1", CounterSource::Default),
+            ("bm Bb5; id \"Ruy Lopez\";", "0 1", CounterSource::Default),
+        ];
+        let mut fen = String::new();
+        for (rest, counters, source) in cases {
+            let line = format!("{BOARD} {rest}");
+            assert_eq!(epd_fen_into(&line, &mut fen), Some(source), "{line}");
+            assert_eq!(fen, format!("{BOARD} {counters}"), "{line}");
+        }
+        // The counters are the book's as written; ones that make no FEN
+        // reject the line, as a bad board does.
+        assert_eq!(
+            epd_to_fen(&format!("{BOARD} 0 0")),
+            Some(format!("{BOARD} 0 0"))
+        );
+        assert_eq!(epd_to_fen(&format!("{BOARD} hmvc x;")), None);
+
+        // A book counts its positions by source, whatever chunks it is
+        // parsed in.
+        let text = cases
+            .iter()
+            .map(|(rest, ..)| format!("{BOARD} {rest}\n"))
+            .collect::<String>()
+            .repeat(40);
+        let single = parse_epd_lines(&text);
+        assert_eq!(
+            single.move_counters(),
+            MoveCounterSources {
+                fields: 80,
+                opcodes: 160,
+                default: 160,
+            }
+        );
+        assert_eq!(parse_epd_in_chunks(&text, 7), single);
     }
 
     #[test]

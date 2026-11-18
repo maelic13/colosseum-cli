@@ -5,7 +5,7 @@ use serde::Serialize;
 pub const SUPPORTED_TELEMETRY_SYNTAXES: [&str; 3] = [
     "PGN tags: [%depth N] [%emt SECONDS] [%nodes N]",
     "key/value comments: depth|d=N time|t=Nms|Ns nodes|n=N",
-    "Colosseum move comments: {s=CP|#N d=N t=Nms h=Nms n=N}, {book} and {forfeit [s=CP|#N] [d=N] t=Nms [h=Nms] [n=N]} or {forfeit}; WhiteTimeMarginMs/BlackTimeMarginMs tags",
+    "Colosseum move comments: {s=CP|#N d=N t=Nms h=Nms n=N}, {book} and {forfeit [s=CP|#N] [d=N] t=Nms [h=Nms] [n=N]} or {forfeit}; WhiteTimeMarginMs/BlackTimeMarginMs and WhiteNodeBudget/BlackNodeBudget tags",
 ];
 
 const NODE_SEMANTICS_WARNING: &str = "implied NPS is comparable only when node accounting has compatible semantics, normally within the same engine lineage";
@@ -51,6 +51,26 @@ pub struct EngineTelemetryReport {
     /// Harness overhead per move (`h=`): charged time minus the time the
     /// engine reported, in milliseconds.
     pub harness_overhead_ms: OverheadMetric,
+    /// How the side kept to its node budget, when its games had one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub node_budget: Option<NodeBudgetMetric>,
+}
+
+/// A side's moves against its node budget, over the moves whose game named
+/// one (`WhiteNodeBudget` or `BlackNodeBudget`): an engine that overshoots or
+/// ignores its budget reports more nodes than it was given.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct NodeBudgetMetric {
+    /// The side's budget; the largest when its games named different ones.
+    pub budget: u64,
+    pub moves_with_budget: u32,
+    /// Of those, the moves that reported a node count.
+    pub reported_moves: u32,
+    /// The largest node count any of them reported.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_nodes: Option<u64>,
+    /// The moves that reported more nodes than their game's budget.
+    pub over_budget: u32,
 }
 
 /// The distribution of per-move harness overhead, and how often it exceeded
@@ -127,6 +147,11 @@ struct EngineSamples {
     overhead_ms: Vec<f64>,
     moves_with_margin: u32,
     over_margin: u32,
+    budget: Option<u64>,
+    moves_with_budget: u32,
+    reported_with_budget: u32,
+    max_budgeted_nodes: Option<u64>,
+    over_budget: u32,
 }
 
 pub fn unavailable(reason: impl Into<String>) -> SearchTelemetryReport {
@@ -224,6 +249,9 @@ fn analyze_games(
         let margin = |tag| pgn_tag(game, tag).and_then(|value| value.parse::<f64>().ok());
         let white_margin = margin("WhiteTimeMarginMs");
         let black_margin = margin("BlackTimeMarginMs");
+        let budget = |tag| pgn_tag(game, tag).and_then(|value| value.parse::<u64>().ok());
+        let white_budget = budget("WhiteNodeBudget");
+        let black_budget = budget("BlackNodeBudget");
         for (index, parsed) in parse_mainline_moves(game, starts_white)
             .into_iter()
             .enumerate()
@@ -289,6 +317,20 @@ fn analyze_games(
             if let Some(value) = parsed.telemetry.nodes {
                 samples.nodes.push(value);
             }
+            if let Some(budget) = if parsed.white {
+                white_budget
+            } else {
+                black_budget
+            } {
+                samples.budget = samples.budget.max(Some(budget));
+                samples.moves_with_budget += 1;
+                if let Some(nodes) = parsed.telemetry.nodes {
+                    let nodes = nodes as u64;
+                    samples.reported_with_budget += 1;
+                    samples.max_budgeted_nodes = samples.max_budgeted_nodes.max(Some(nodes));
+                    samples.over_budget += u32::from(nodes > budget);
+                }
+            }
             if let (Some(nodes), Some(elapsed)) =
                 (parsed.telemetry.nodes, parsed.telemetry.elapsed_seconds)
             {
@@ -327,6 +369,13 @@ fn analyze_games(
                 samples.moves_with_margin,
                 samples.over_margin,
             ),
+            node_budget: samples.budget.map(|budget| NodeBudgetMetric {
+                budget,
+                moves_with_budget: samples.moves_with_budget,
+                reported_moves: samples.reported_with_budget,
+                max_nodes: samples.max_budgeted_nodes,
+                over_budget: samples.over_budget,
+            }),
         })
         .collect::<Vec<_>>();
     let annotated = engines
@@ -782,6 +831,7 @@ mod tests {
             opening_plies: 0,
             identity: None,
             time_margins_ms: Some([20, 5]),
+            node_budgets: [None, None],
             slot: None,
             forfeited_search: None,
         };
@@ -858,6 +908,39 @@ mod tests {
         let a = &report.engines[0].harness_overhead_ms;
         assert_eq!(a.max, Some(12.0));
         assert_eq!((a.moves_with_margin, a.over_margin), (0, 0));
+    }
+
+    #[test]
+    fn node_counts_are_held_against_each_sides_own_budget() {
+        // A has 1,000 nodes in the first game and 2,000 in the second; B has
+        // no budget. A book move is not a search, and a move without `n=`
+        // is under the budget but reports nothing.
+        let pgn = "[Event \"x\"]\n[White \"A\"]\n[Black \"B\"]\n[Result \"*\"]\n\
+                   [WhiteNodeBudget \"1000\"]\n\n\
+                   1. e4 {book} e5 {n=9000} 2. Nf3 {n=1000} Nc6 {n=5} 3. Bb5 {n=1001} a6 {n=5} \
+                   4. Ba4 {d=1} *\n\n\
+                   [Event \"x\"]\n[White \"B\"]\n[Black \"A\"]\n[Result \"*\"]\n\
+                   [BlackNodeBudget \"2000\"]\n\n1. e4 {n=5} e5 {n=1500} *\n";
+        let report = analyze_pgn(pgn);
+        let engine = |name: &str| {
+            report
+                .engines
+                .iter()
+                .find(|engine| engine.engine == name)
+                .unwrap()
+        };
+        assert_eq!(
+            engine("A").node_budget,
+            Some(NodeBudgetMetric {
+                budget: 2_000,
+                moves_with_budget: 4,
+                reported_moves: 3,
+                max_nodes: Some(1_500),
+                // 1,001 is over its game's 1,000; 1,500 is within 2,000.
+                over_budget: 1,
+            })
+        );
+        assert_eq!(engine("B").node_budget, None);
     }
 
     /// The committed specimen of the writer form: a change to the comment

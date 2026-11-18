@@ -151,6 +151,10 @@ pub struct PgnTags {
     /// move's charged time may exceed the clock before it forfeits. With the
     /// per-move `h=`, they say how close each move came.
     pub time_margins_ms: Option<[u64; 2]>,
+    /// The node budgets, White's then Black's, of a side whose control is a
+    /// fixed node count: with the per-move `n=`, they say which moves
+    /// searched past the budget.
+    pub node_budgets: [Option<u64>; 2],
     /// The CPU slot the game ran on, counting from zero.
     pub slot: Option<usize>,
     /// The search that lost on time without playing a move, written as a
@@ -203,6 +207,12 @@ pub fn build_pgn(tags: &PgnTags, san_moves: &[String], annotations: &[MoveAnnota
     if let Some([white, black]) = tags.time_margins_ms {
         tag("WhiteTimeMarginMs", &white.to_string());
         tag("BlackTimeMarginMs", &black.to_string());
+    }
+    if let Some(nodes) = tags.node_budgets[0] {
+        tag("WhiteNodeBudget", &nodes.to_string());
+    }
+    if let Some(nodes) = tags.node_budgets[1] {
+        tag("BlackNodeBudget", &nodes.to_string());
     }
     if let Some(slot) = tags.slot {
         tag("GameSlot", &slot.to_string());
@@ -333,6 +343,7 @@ mod tests {
             identity: None,
             opening_plies: 2,
             time_margins_ms: Some([20, 25]),
+            node_budgets: [Some(5_000), None],
             slot: Some(3),
             forfeited_search: None,
         };
@@ -343,6 +354,8 @@ mod tests {
         assert!(pgn.contains("[OpeningPlyCount \"2\"]"));
         assert!(pgn.contains("[WhiteTimeMarginMs \"20\"]"));
         assert!(pgn.contains("[BlackTimeMarginMs \"25\"]"));
+        assert!(pgn.contains("[WhiteNodeBudget \"5000\"]"));
+        assert!(!pgn.contains("BlackNodeBudget"));
         assert!(pgn.contains("[GameSlot \"3\"]"));
         assert!(pgn.contains("1. e4 e5 2. Qh5"));
         assert!(pgn.trim_end().ends_with("1-0"));
@@ -365,6 +378,7 @@ mod tests {
             identity: None,
             opening_plies: 0,
             time_margins_ms: None,
+            node_budgets: [None, None],
             slot: None,
             forfeited_search: None,
         };
@@ -391,6 +405,7 @@ mod tests {
             identity: None,
             opening_plies: 0,
             time_margins_ms: None,
+            node_budgets: [None, None],
             slot: None,
             forfeited_search: None,
         };
@@ -418,6 +433,7 @@ mod tests {
             identity: None,
             opening_plies: 0,
             time_margins_ms: None,
+            node_budgets: [None, None],
             slot: None,
             forfeited_search: Some(SearchAnnotation {
                 time_ms: Some(164),
@@ -511,6 +527,7 @@ mod tests {
             identity: None,
             opening_plies: 2,
             time_margins_ms: None,
+            node_budgets: [None, None],
             slot: None,
             forfeited_search: None,
         };

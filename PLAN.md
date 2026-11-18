@@ -1777,7 +1777,8 @@ post-release list.
 
 ### Capability classes for numbered steps
 
-Each open `GUIDE.md` step carries a stable **capability class**; `GUIDE.md`'s
+Each step carries a stable **capability class** in its head in this file,
+which `GUIDE.md`'s generated board shows; `GUIDE.md`'s
 "Current model mapping" table is the single maintainer-edited source that
 maps classes to the current Claude model and thinking mode. The classes are
 the ones the Rarog repository uses, so one system serves every repository
@@ -1818,27 +1819,139 @@ never changes the active model by itself.
 | GUI Phases 1–5 | assigned in the GUI repository's `PLAN.md` §G9 (same classes) |
 | 12.1–12.4 | `I1` (completed) |
 | 12.5 | `I1` |
+| 12.6 | `I1` (completed) |
+| 12.7–12.10 | `I1` |
+| 12.11 | `R2` for the definitions, then `I2` |
+| 12.12 | `I2` |
+| 12.13 | `R2` for the design, then `I2` |
+| 12.14 | `I2` |
+| 12.15 | `R2` for the defaults, then `I2` |
+| 12.16–12.17 | `I1` |
+| 12.18 | `M` |
 
 Completed steps keep the class recorded in their phase record.
 
+### Order of work
+
+The open steps in the order they are taken, which is not always their
+numbering: Phase 12 runs beside the GUI programme and is taken first, and
+the GUI programme's steps wait for the GUI repository. `GUIDE.md`'s board
+reads this table, and its **Now** is the first open row; a finished step
+leaves the table in the commit that finishes it.
+
+| Step | Waits for |
+|---|---|
+| 12.11 | — |
+| 12.12 | — |
+| 12.13 | — |
+| 12.14 | — |
+| 12.15 | — |
+| 12.16 | — |
+| 12.17 | — |
+| 12.18 | the maintainer wanting the platforms |
+| 11.3 | GUI 1.2 signed off |
+
 ### Completed phases
 
-| Phase | What it delivered | Evidence |
-|---|---|---|
-| 0 | Current-state audit, Clean Architecture target, ADRs 0001–0008, the one-repository/independent-release model and the Colosseum naming decision | [record](docs/architecture/phases-0-9-record.md), [current-state](docs/architecture/current-state.md), [target](docs/architecture/target-architecture.md), [release architecture](docs/architecture/release-architecture.md), [ADRs](docs/architecture/adr/README.md) |
-| 1 | Pentanomial statistics and normalized Elo in `colosseum-core`, the analytic and external oracle fixture corpus, the hermetic required suite | [record](docs/architecture/phases-0-9-record.md), `tests/fixtures/statistics/` |
-| 2 | Boundary migration (runtime participant, application ports), the independently versioned `colosseum-cli` package, run files, run records, run directories, `self-test`, `status` | [exit](docs/architecture/phase-2-exit.md) |
-| 3 | OS topology adapters, deterministic placement, hard affinity where the OS allows it, `capabilities` | [exit](docs/architecture/phase-3-exit.md) |
-| 4A | Fixed-match runner with explicit clock accounting, fault classification, books and durability | [exit](docs/architecture/phase-4a-exit.md) |
-| 4B | Pair-atomic capped SPRT, oracle replay and live parity against fastchess and cutechess | [exit](docs/architecture/phase-4b-exit.md) |
-| 4C | Optional identical-binary calibration | [exit](docs/architecture/phase-4c-exit.md) |
-| 5 | SPSA kernel, driver, `spsa plan` and `spsa status`, `sprt --apply` | [exit](docs/architecture/phase-5-exit.md) |
-| 6 | `nps`, scaling sweeps, `book` tools, `stats` replay and planning, `suite` | [exit](docs/architecture/phase-6-exit.md) |
-| 7 | Round-robin and gauntlet tournaments with joint or anchored ML ratings | [exit](docs/architecture/phase-7-exit.md) |
-| 8 | Parity repeated on the candidate, ponder adopted, remaining gaps decided | [exit](docs/architecture/phase-8-exit.md), [parity](docs/architecture/phase-8-parity.md), [gaps](docs/architecture/phase-8-gap-decisions.md) |
-| 9 | Naming retained (ADR-0009), versioned `docs/cli/` with a generated reference (ADR-0010), README, candidate bundle, coverage and usability acceptance | [9.4](docs/architecture/phase-9.4-candidate.md), [9.5](docs/architecture/phase-9.5-coverage.md), [9.6](docs/architecture/phase-9.6-usability.md), [9.7](docs/architecture/phase-9.7-release-acceptance.md) |
-| 10 | First-release corrections and release preparation: adjudication off by default, class-aware placement, PGN annotations, final-centre SPSA estimator, graceful stop, fixed rating field, book-range refusal, the slot pool, the arrival-stamped clock model and journal, latency instrument, fault allowance, persistent engines per slot, real-engine qualification and symmetry, the adoption-audit corrections, the unscorable exclusion, the product versions and tag contract, one build entry point, the user documentation, and the acceptance repeat | [record](docs/architecture/phase-10-record.md), [qualification](docs/architecture/phase-10-qualification.md), [parity](docs/architecture/phase-8-parity.md) |
+Each completed phase is a `— CLOSED` heading over the one-paragraph summary
+`GUIDE.md`'s board shows; its steps and evidence are in the records it
+names.
 
+### Phase 0 — Audit and target architecture — CLOSED
+
+Current-state audit, Clean Architecture target, ADRs 0001–0008, the
+one-repository/independent-release model and the Colosseum naming decision
+(0.1–0.8). Evidence: [record](docs/architecture/phases-0-9-record.md),
+[current-state](docs/architecture/current-state.md),
+[target](docs/architecture/target-architecture.md),
+[release architecture](docs/architecture/release-architecture.md),
+[ADRs](docs/architecture/adr/README.md).
+
+### Phase 1 — Statistics core — CLOSED
+
+Pentanomial statistics and normalized Elo in `colosseum-core`, the analytic
+and external oracle fixture corpus, the hermetic required suite (1.1–1.9).
+Evidence: [record](docs/architecture/phases-0-9-record.md),
+`tests/fixtures/statistics/`.
+
+### Phase 2 — Boundaries and the CLI package — CLOSED
+
+Boundary migration (runtime participant, application ports), the
+independently versioned `colosseum-cli` package, run files, run records, run
+directories, `self-test`, `status` (2.1–2.10). Evidence:
+[exit](docs/architecture/phase-2-exit.md).
+
+### Phase 3 — Topology and placement — CLOSED
+
+OS topology adapters, deterministic placement, hard affinity where the OS
+allows it, `capabilities` (3.1–3.8). Evidence:
+[exit](docs/architecture/phase-3-exit.md).
+
+### Phase 4A — Fixed-match runner — CLOSED
+
+Fixed-match runner with explicit clock accounting, typed engine faults,
+books and durability (4A.1–4A.8). Evidence:
+[exit](docs/architecture/phase-4a-exit.md).
+
+### Phase 4B — SPRT and parity — CLOSED
+
+Pair-atomic capped SPRT, oracle replay and live parity against fastchess and
+cutechess (4B.1–4B.6). Evidence: [exit](docs/architecture/phase-4b-exit.md).
+
+### Phase 4C — Calibration — CLOSED
+
+Optional identical-binary calibration (4C.1–4C.3). Evidence:
+[exit](docs/architecture/phase-4c-exit.md).
+
+### Phase 5 — SPSA — CLOSED
+
+SPSA kernel and driver, `spsa plan`, `spsa status`, `sprt --apply`
+(5.1–5.10). Evidence: [exit](docs/architecture/phase-5-exit.md).
+
+### Phase 6 — Measurement tools — CLOSED
+
+`nps` and scaling sweeps, `book` tools, `stats` replay and planning, `suite`
+(6.1–6.9). Evidence: [exit](docs/architecture/phase-6-exit.md).
+
+### Phase 7 — Tournaments — CLOSED
+
+Round-robin and gauntlet tournaments with joint or anchored ML ratings,
+matching the GUI on a frozen fixture (7.1–7.3). Evidence:
+[exit](docs/architecture/phase-7-exit.md).
+
+### Phase 8 — Parity and gap decisions — CLOSED
+
+Parity repeated on the candidate, ponder adopted, remaining gaps decided
+(8.1–8.3). Evidence: [exit](docs/architecture/phase-8-exit.md),
+[parity](docs/architecture/phase-8-parity.md),
+[gaps](docs/architecture/phase-8-gap-decisions.md).
+
+### Phase 9 — Naming, documentation and release acceptance — CLOSED
+
+Naming retained (ADR-0009), versioned `docs/cli/` with a generated reference
+(ADR-0010), README, candidate bundle, coverage and usability acceptance,
+release acceptance of the step 9.7 candidate (9.0–9.7). Evidence:
+[9.4](docs/architecture/phase-9.4-candidate.md),
+[9.5](docs/architecture/phase-9.5-coverage.md),
+[9.6](docs/architecture/phase-9.6-usability.md),
+[9.7](docs/architecture/phase-9.7-release-acceptance.md).
+
+### Phase 10 — First-release corrections — CLOSED
+
+First-release corrections and release preparation (10.1–10.10): adjudication
+off by default, class-aware placement, PGN annotations, the final-centre
+SPSA estimator, graceful stop, the slot pool, the arrival-stamped clock
+model and journal, fault allowance, persistent engines per slot, real-engine
+qualification and symmetry, the adoption-audit corrections, the unscorable
+exclusion, the versions and tag contract, one build entry point, the user
+documentation and the acceptance repeat. 10.9m rejected (the forfeits were
+an engine defect); 10.9h and 10.9p deferred, 10.9t reopened as 12.13;
+10.9g's two maintainer probes owed and not blocking. Evidence:
+[record](docs/architecture/phase-10-record.md),
+[qualification](docs/architecture/phase-10-qualification.md),
+[parity](docs/architecture/phase-8-parity.md).
+
+### Facts from the completed phases
 Facts from those phases that still govern new work:
 
 - The CLI's public contract is S5; the required suite is hermetic (S6.3);
@@ -2005,7 +2118,7 @@ all of it as reports arrive.
 
 ### Phase 11 — Separation (this repository)
 
-- **11.1 Naming** (`R2`). The names of both products, their executables
+- **11.1 Naming — `R2`, DONE.** The names of both products, their executables
   and the two repositories, after a dated collision screen as in Phase 0.6.
   The recommendation going in: the CLI keeps `colosseum-cli`, because its
   value to scripted users is stability and a rename would land on exactly
@@ -2027,7 +2140,7 @@ all of it as reports arrive.
   for the 1.1.0 updater. The 1.x releases and their tags are deleted from
   this repository at 14.2. The new application must not share 1.x's data
   directories.
-- **11.2 The GUI repository seed** (`M`). `docs/gui-v2/`
+- **11.2 The GUI repository seed — `M`, DONE.** `docs/gui-v2/`
   finalised under the 11.1 names — `AGENTS.md`, `PLAN.md`, `GUIDE.md` — and
   handed to the maintainer, who creates the remote repository
   (`maelic13/colosseum-gui`) and commits the seed as its first commit. The
@@ -2045,7 +2158,8 @@ all of it as reports arrive.
   by the maintainer; its root commit `22d0be1` holds `AGENTS.md`,
   `PLAN.md` and `GUIDE.md` byte-identical to the seed at `54b9c47`, with
   the licence and a `.gitattributes`.
-- **11.2.1 Retire the egui application from `dev`** (`I1`). After GUI 1.1
+- **11.2.1 Retire the egui application from `dev` — `I1`, DONE
+  2026-09-29.** After GUI 1.1
   has read the 1.x code, and on `dev` only: `main` keeps 1.x and CLI 0.2.0
   until 14.1 (ADR-0012, *Branches and order*). Remove `colosseum-gui`,
   `engine::scheduler`, the SQLite store, the runtime adapter, and the `gui-v`
@@ -2070,7 +2184,7 @@ all of it as reports arrive.
   `docs/archive/gui-1.x/`. The CLI's code, its tests and the Phase 7 GUI
   parity fixture are untouched; the architecture tests keep their
   forbidden-dependency lists as guards.
-- **11.3 The CLI against the requirements** (`R2`). After GUI 1.2 is
+- **11.3 The CLI against the requirements — `R2`.** After GUI 1.2 is
   signed off: a head-to-head evaluation of what `colosseum-cli` does today
   against every *keep* and *change* item of the inventory and every
   requirement, the later ones included (detach, remote watch and control).
@@ -2092,7 +2206,7 @@ all of it as reports arrive.
   **Exit:** `docs/architecture/gui-gap-analysis.md`; every requirement
   classified; *not feasible* items resolved with the maintainer; 13.5–13.7
   confirmed or re-cut from it. (M2)
-- **11.3.1 Decide engine option resolution** (`R2`). Inventory PLY-11,
+- **11.3.1 Decide engine option resolution — `R2`.** Inventory PLY-11,
   PLY-12, PLY-13: mapping the requested threads and hash to what each
   engine calls them, clamped to the declared range (the exact-name
   allowlist, never substrings); the compatibility notes before a start;
@@ -2102,12 +2216,12 @@ all of it as reports arrive.
   per-engine options into the run file from its library.
   **Exit:** the choice in the gap analysis, with the implementing step
   named (13.7.2 or a GUI step).
-- **11.3.2 Decide ponder** (`R2`). Inventory PLY-14: whether a tournament
+- **11.3.2 Decide ponder — `R2`.** Inventory PLY-14: whether a tournament
   with ponder off sends `Ponder=false` to every engine, as 1.x did, and
   whether ponder is allowed without a clock control or without separate
   cores for each engine, which the CLI refuses today.
   **Exit:** the choice in the gap analysis; a CLI change, if any, named.
-- **11.3.3 Decide adjudication** (`R2`). Inventory PLY-15, PLY-35: the
+- **11.3.3 Decide adjudication — `R2`.** Inventory PLY-15, PLY-35: the
   defaults the application offers (1.x: draw from ply 40, 8 moves, 8 cp;
   resign 4 moves, 800 cp; max moves 300 — against the CLI's 40 moves,
   8 moves, 10 cp; 3 moves, 600 cp); whether one-sided resign is offered;
@@ -2116,20 +2230,20 @@ all of it as reports arrive.
   position not counting toward a threefold repetition.
   **Exit:** the choice in the gap analysis; a result-changing CLI fix is
   a minor-release step of its own, never a patch.
-- **11.3.4 Decide faults in tournaments** (`R2`). Inventory PLY-17,
+- **11.3.4 Decide faults in tournaments — `R2`.** Inventory PLY-17,
   PLY-18, PLY-35: a game whose engine cannot start — the CLI ends the run
   as an infrastructure error; 1.x skipped the game and replayed it at the
   next resume; the fault allowance that marks a run invalid; and whether a
   hang in a fixed-nodes or fixed-depth search is a time loss or a crash.
   **Exit:** the choice in the gap analysis; a CLI change, if any, named.
-- **11.3.5 Decide scheduling** (`R2`). Inventory PLY-26 and DEF-14:
+- **11.3.5 Decide scheduling — `R2`.** Inventory PLY-26 and DEF-14:
   changing the number of parallel games while a tournament runs (1.x yes,
   CLI fixed per run); and colours across cycles when a pair plays one game
   per cycle — the shared pairing gives the same engine White every cycle.
   A pairing change alters the schedule of a resumable run, so the fix
   names its resume compatibility.
   **Exit:** the choice in the gap analysis; a CLI change, if any, named.
-- **11.4 — EXIT: Protocol specification** (`R2`). S5.15 filled in: the
+- **11.4 Protocol specification — `R2`, EXIT.** S5.15 filled in: the
   message catalogue (handshake, facts, state, commands, responses, errors,
   gap and snapshot), the run-file hand-off, the amendment and changed-engine
   semantics from 11.3, the versioning rules, the JSON Schema generated from
@@ -2142,7 +2256,7 @@ all of it as reports arrive.
 
 ### Phase 13 — The front-end protocol (this repository, one CLI minor release)
 
-- **13.1 Session** (`I2`). The protocol mode: the flag, framing, the
+- **13.1 Session — `I2`.** The protocol mode: the flag, framing, the
   handshake, the event pipeline (a bounded queue on its own task, state
   coalescing, fact sequence numbers, `gap`), the snapshot request, error
   responses, and a test harness that validates every emitted message
@@ -2150,13 +2264,13 @@ all of it as reports arrive.
   **Exit:** a protocol session over `tournament run` with stub engines emits
   a valid handshake, run state and terminal state; the clean-stop suite is
   unchanged.
-- **13.2 Synthetic streams** (`I1`). The two generators: a synthetic
+- **13.2 Synthetic streams — `I1`.** The two generators: a synthetic
   tournament at a chosen participant count, game count, concurrency and
   update rate, and a replay of a finished run directory at real or
   accelerated speed; both schema-valid, neither needs an engine.
   **Exit:** GUI 2.3 can run against them; their output recorded as
   conformance fixtures. (M4)
-- **13.3 Live events** (`I2`). `tournament run` publishes game start,
+- **13.3 Live events — `I2`.** `tournament run` publishes game start,
   every move with its SAN, clocks and FEN and the opening's ECO code and
   name while it is known (the 1.x `eco` module and its lichess CC0 data,
   restored from `ba30829`), the latest search information per side as
@@ -2167,7 +2281,7 @@ all of it as reports arrive.
   **Exit:** a real two-engine tournament observed through the protocol; the
   durable artifacts identical to the same run without the protocol, shown
   with stub engines.
-- **13.4 Control and lifecycle** (`R2`, then `I2`). *Stop* and *stop now* as
+- **13.4 Control and lifecycle — `R2`, then `I2`.** *Stop* and *stop now* as
   protocol commands, identical on every platform; resume reports what it
   resumed. The analysis the maintainer deferred is done here, together with
   GUI 4.2: what end of input means, whether a run can keep playing detached
@@ -2175,24 +2289,24 @@ all of it as reports arrive.
   choice is recorded in S5.15 and an ADR.
   **Exit:** the clean-stop suite extended with both protocol commands and
   the chosen end-of-input behaviour for `tournament run`. (M5, with 13.3)
-- **13.5 Amendments** (`I2`). Remove a participant, add a participant,
+- **13.5 Amendments — `I2`.** Remove a participant, add a participant,
   change the length of a tournament in progress, per the 11.3 and 11.4
   semantics: append-only journal, stable game identity, amendment facts and
   run-record entries, resume, `status` and `stats` on amended runs.
   **Exit:** kill, amend and resume tests reach the statistics of an
   uninterrupted amended run; `stats` replays an amended directory.
-- **13.6 Changed engines** (`I1`). The policy chosen at 11.3 for an
+- **13.6 Changed engines — `I1`.** The policy chosen at 11.3 for an
   engine executable that changed since the run started: never silent,
   always recorded.
   **Exit:** a test per branch of the policy; the refusal message names the
   alternative.
-- **13.7 Queries** (`I1`). The read-only invocations: run summary,
+- **13.7 Queries — `I1`.** The read-only invocations: run summary,
   paged games with FEN per ply, standings and crosstable, on a run directory
   of the GUI 1.2 largest size within the CLI-side budgets, using the
   journal's PGN byte ranges.
   **Exit:** budgets met on a synthetic directory at the largest target;
   nothing mutated. (M6, with 13.5 and 13.6)
-- **13.7.1 Tournament statistics** (`I1`). What the 1.x standings showed
+- **13.7.1 Tournament statistics — `I1`.** What the 1.x standings showed
   and the CLI does not compute (the GUI repository's `docs/design/inventory.md`, ARN-11, ARN-12, ARN-18, PLY-21,
   PLY-22, PLY-24): Sonneborn–Berger with shared places, the one-seed
   gauntlet's score-share ranking, the performance rating, each engine's
@@ -2202,13 +2316,13 @@ all of it as reports arrive.
   `result.json`, the standings query (13.7) and the snapshot fact (13.3).
   **Exit:** the figures equal 1.x's on a frozen fixture replayed through
   both, as Phase 7 matched the GUI's ratings.
-- **13.7.2 Tournament options for the application** (`I1`). From the
+- **13.7.2 Tournament options for the application — `I1`.** From the
   inventory (PLY-05, PLY-19, PLY-20) and whatever 11.3.1–11.3.5 put in the
   CLI: an opening count cap, the tournament's name and date in the PGN
   `Event` and `Date`, and "name version" labels carried to every output.
   **Exit:** a test per option; the run-file schema and the command
   reference regenerated.
-- **13.8 — EXIT: Conformance and candidate** (`V`). The conformance
+- **13.8 Conformance and candidate — `V`, EXIT.** The conformance
   suite green; the schema and fixtures packaged as one release asset;
   `docs/cli/protocol.md` final; a CLI release candidate built from the
   protocol's pull request (or dispatched on its branch), which GUI 4.8
@@ -2220,8 +2334,8 @@ The egui application left `dev` at 11.2.1. The swap and the merge were
 moved to the split by the desktop repository's ADR-0001 and done there
 (ADR-0012, *Revision 2026-11-14*); what is left is the release pair.
 
-- **14.1 Swap and merge** (`I1`) — **done 2026-11-14, at the split, not
-  after GUI 4.8.** The maintainer swapped the repositories. On `dev`, before
+- **14.1 Swap and merge — `I1`, DONE 2026-11-14.** Done at the split, not
+  after GUI 4.8. The maintainer swapped the repositories. On `dev`, before
   its merge into `master`: `master` merged in (CLI 0.3.0–0.5.0), the CLI
   release lane moved to plain `v<semver>` tags on `master` that claim
   Latest (`release.yml`, `cargo xtask release-check`, the architecture
@@ -2231,7 +2345,7 @@ moved to the split by the desktop repository's ADR-0001 and done there
   the GUI seed pointer removed (the desktop repository holds them). The
   maintainer re-tags `cli-v0.1.0`–`cli-v0.5.0` as `v0.1.0`–`v0.5.0` and,
   after desktop 1.2.0 is out, deletes the 1.x releases and tags here. (M8)
-- **14.2 — EXIT: Releases** (`V`). The CLI minor release that carries the
+- **14.2 Releases — `V`, EXIT.** The CLI minor release that carries the
   protocol, from `maelic13/colosseum-cli`; then the desktop 2.0.0 release,
   pinned to it (GUI 5.1), with no bridge release (desktop ADR-0001). No
   executable is renamed (ADR-0012). (M9)
@@ -2260,6 +2374,8 @@ format changes.
 
 - **(a) Tooling notes from the first adoption** (GUIDE 12.1, `I1`), reported
   2026-09-22; nothing blocks.
+  - **12.1 Tooling notes from the first adoption — `I1`, DONE.** The
+    three items below, shipped in CLI 0.2.0.
   - **`spsa status` ETA after a resume — resolved 2026-09-25, before this
     step.** Every checkpoint now records the run's total active time across
     invocations (`run_elapsed_seconds`), progress blocks and the SPRT total
@@ -2297,7 +2413,7 @@ a finite ETA in `spsa status`.
   reported 2026-09-25 against `cli-v0.1.0`; the runner's SPSA and
   SPRT were validated at production scale (a 150,000-game tune, +13 Elo, no
   faults). The resume items of that report are (a) above.
-  - **12.2 `spsa history`.** A read-only command that prints the centre
+  - **12.2 `spsa history` — `I1`, DONE.** A read-only command that prints the centre
     vector after every completed iteration, rebuilt from the journal
     exactly as a resume replays it, so it works while a tune is running
     and a trajectory read at a fixed iteration comes from an artifact.
@@ -2306,7 +2422,7 @@ a finite ETA in `spsa status`.
     always keeping the last. `result.json` is unchanged. A test tunes a
     synthetic run and asserts the rows equal the centres the driver
     committed, in knob order.
-  - **12.3 `spsa --seed-from <run dir>`.** Starts a new tune from a finished
+  - **12.3 `spsa --seed-from <run dir>` — `I1`, DONE.** Starts a new tune from a finished
     tune's final centres, rounded as the engine received them, as the new
     initial values, keeping the previous tune's surface (names, bounds,
     steps) unless `--tune` is given, in which case the knob names must
@@ -2315,7 +2431,8 @@ a finite ETA in `spsa status`.
     Only a completed run seeds: a stopped, cancelled or invalid one is
     refused with the reason. Tests: a seeded tune starts from the source's
     rounded centres, and each refusal.
-  - **12.4 A command-line option list that replaces a run file's.** The
+  - **12.4 A command-line option list that replaces a run file's — `I1`,
+    DONE.** The
     documented rule stays: an explicit command-line option replaces the
     run file's value, arrays included. When that drops values the run
     file named — a side's `--option` list losing `Hash` and `Threads` —
@@ -2326,31 +2443,327 @@ a finite ETA in `spsa status`.
     the warning and the recorded note.
 - **(c) Findings from the 1.x inventory** (GUIDE 12.5, `I1`), GUI step 1.1,
   2026-09-29; latent, not reported by an adopter.
-  - **12.5 An unparsable start position is refused.** The runner falls back
-    to the standard start position when a game's start FEN does not parse,
-    while the engines are still sent that FEN. Books are validated at load,
-    so no run reaches it today; the fallback becomes an error naming the
-    game and the FEN. A test hands the runner an invalid FEN.
+  - **12.5 An unparsable start position is refused — `I1`, DONE
+    2026-11-18.** The runner falls back to the standard start position when
+    a game's start FEN does not parse, while the engines are still sent that
+    FEN. Books are validated at load, so no run reaches it today; the
+    fallback becomes an error naming the game and the FEN. A test hands the
+    runner an invalid FEN. Taken before 12.9, which changes how a start
+    position is read, so a mistake there is an error, not a game from the
+    standard position. Done: the runner reads the start position before it
+    starts or reuses an engine; a FEN that does not parse, or parses to an
+    illegal position, ends the game unscorable with the infrastructure fault
+    `start-position` ("game N: the start position `FEN` is not a legal
+    position: …"), so the run stops as an infrastructure error, and kept
+    engines are quit. The engine crate's `start_position` test hands the
+    runner both kinds with absent engine executables and finds that fault,
+    not `engine-spawn`, as the old fallback gave. Nothing that plays a
+    parsable position changed, so no replay or parity check applies.
 - **(d) Requests from the maintainer's engine projects, for CLI 0.6.0**
-  (GUIDE 12.6 onward), 2026-11-14. The maintainer takes these before the
-  GUI programme continues and releases them together as 0.6.0, the first
-  release through pull-request delivery and plain `v` tags, so the whole
-  path — pull request, candidate, tag, publication — is exercised on real
-  work. The intake is the engine projects' request list of 2026-11-13
-  (thirteen requests, kept in the engine repository) plus what the
-  maintainer adds; each request becomes a numbered step here when the
-  maintainer selects it, with its own contract, and none is implemented
-  from the list alone.
-  - **12.6 The time to an SPSA stop point.** When a tune runs with
-    `--stop-after-iteration N` below its total (stop at 2,000 of 6,000
-    iterations), every progress report — the console block and its
-    `run.log` line — and `spsa status` give the time left to the stop
-    point as well as the time left to the end of the tune, both from the
-    same observed rate. Without a stop point, or once the stop point is the
-    end, the report is unchanged. A test runs a synthetic tune with a stop
-    point and asserts both figures in the progress output, `run.log` and
-    `spsa status`, and that a resumed run with a new stop point reports the
-    new one.
+  (12.6 onward), 2026-11-14. The maintainer takes these before the GUI
+  programme continues and releases them as 0.6.0 and the minor releases
+  after it; 0.6.0 is the first release through pull-request delivery and
+  plain `v` tags, so the whole path — pull request, candidate, tag,
+  publication — is exercised on real work. The intake is Rarog's request
+  list, `analysis/colosseum_requests_2026-11-13.md` in the Rarog
+  repository (thirteen requests, each proved from 0.5.0's artifacts), and
+  Basilisk's SPSA read request of 2026-11-14. Requests that overlap are one
+  step (Basilisk's read and Rarog's request 9; Rarog's requests 6 and 10),
+  so the fourteen requests are the twelve steps 12.7–12.18, numbered in the
+  order of work; each names its requests, whose evidence stays in the
+  requesting repository. The order: four small corrections first, which
+  are also all Rarog's next oracle read (RAR-O09) needs from the CLI; then
+  the SPSA reads Basilisk and Rarog share; then Rarog's two priorities,
+  moves-per-period clocks and barrier-free SPSA; then the measurement
+  guards; then the reporting conveniences; the release platforms last. A
+  merged step's open questions are settled with the maintainer before its
+  code. A step that changes what an engine receives or how a game is
+  played (12.7, 12.9, 12.12, 12.13, 12.14) repeats the oracle replay and
+  parity checks and says so in the changelog. Which steps ship in 0.6.0 is
+  the maintainer's choice; small steps may share one branch and one pull
+  request, a large one (12.11, 12.12, 12.13, 12.15) has its own.
+  - **12.6 The time to an SPSA stop point — `I1`, DONE 2026-11-14.** When
+    a tune runs with `--stop-after-iteration N` below its total (stop at
+    2,000 of 6,000 iterations), every progress report — the console block
+    and its `run.log` line — and `spsa status` give the time left to the
+    stop point as well as the time left to the end of the tune, both from
+    the same observed rate. Without a stop point, or once the stop point is
+    the end, the report is unchanged. A test runs a synthetic tune with a
+    stop point and asserts both figures in the progress output, `run.log`
+    and `spsa status`, and that a resumed run with a new stop point reports
+    the new one. Done: the block's `time to stop` line sits just above
+    `time remaining` and reads `<time>, at iteration N`; `spsa status`
+    takes the stop from the latest invocation's run record and reports it
+    as `eta.stop_point`. Evidence: a synthetic tune stopped at 1, resumed
+    to 3, then run to the end asserts the line in the block and `run.log`
+    and `eta.stop_point` in `spsa status`, and their absence without a
+    stop.
+  - **12.7 `winc` and `binc` from each side's own control — `I1`, DONE
+    2026-11-14.** Rarog request 11. The runner's `move_limits` sent the
+    mover's own increment as both `winc` and `binc`, so with a clock per
+    side the engine to move is told its opponent has its own increment; the
+    remaining times are right. Send `winc` from White's control and `binc`
+    from Black's. Equal clocks are unchanged. A test plays 10000+100 against
+    11270+113 and asserts `winc 100 binc 113` on every `go`, reversed when
+    the colours are. Done: `move_limits` takes both sides' controls, the
+    mover's own deciding the kind of limit; the runner's unit test and the
+    CLI test `clock_increments` (the fixture's command log, both colours,
+    failing on the old code with `winc 100 binc 100`) cover it. Equal clocks
+    send what they did. The parity matrix plays depth 1, whose `go` is
+    unchanged, and the oracle replay is the required suite's statistics
+    fixtures, which pass.
+  - **12.8 A fixed match's score in `results.txt` and the run record — `I1`,
+    DONE 2026-11-14.** Rarog request 12. `match` writes
+    `official_sample.pentanomial` as five zeros although its checkpoint
+    holds the counts, and `results.txt` has no pentanomial, Elo or nElo
+    line. Fill the run record's counts from the paired sample and add the
+    pentanomial, Elo and nElo with their 95% intervals to `results.txt` as
+    `sprt` reports them. Nothing changes definition. A test asserts the run
+    record's counts equal a recount of the PGN by pair and that
+    `results.txt` carries the figures the progress output printed. Done:
+    `results.txt` and the run record's `results` gain a paired score
+    (`results.paired`) recounted from the journal by pair as `stats` pairs
+    games, so `sprt` and `calibrate` carry it too; `match` fills
+    `official_sample` (pentanomial, complete pairs, unpaired games) from the
+    paired sample its final report prints. The CLI test plays a scripted
+    three-opening match whose pairs score 0, 1 and 2 and compares the run
+    record with a PGN recount and `results.txt` with the recorded progress
+    block; `stats_replay` checks the recount leaves out post-terminal and
+    unscorable games.
+  - **12.9 An EPD opening keeps its move counters — `I1`, DONE 2026-11-18.**
+    Rarog request 2. `epd_fen_into` keeps an EPD line's four position fields
+    and always appends `0 1`, which shortens a ply-aware engine's thinking
+    on move 1 and moves the 50-move rule. Two trailing integers after the
+    four fields and before any opcode are the halfmove clock and the
+    fullmove number; the `hmvc` and `fmvn` opcodes are taken when present;
+    otherwise `0 1`, as now. The resolved configuration records where the
+    counters came from. This changes what every run from such a book plays.
+    A test asserts `… w KQkq - 2 4` reaches the engine as `position fen … 2
+    4`, and each source and the default. Done: `epd_fen_into` takes two
+    integers after the four fields as the counters, else the `hmvc`/`fmvn`
+    operations (a `;` inside a quoted operand ends none; either alone
+    defaults the other), else `0 1`, keeping the counters as written; the
+    loaded list counts each source, and `OpeningPolicyReport::Book` records
+    them as `move_counters` (EPD only), so the resolved configuration of
+    every EPD run changes and an earlier version's interrupted EPD run is
+    refused on resume. `book slice` now writes whole FENs, since a shard of
+    four fields lost the counters this step keeps. The CLI test plays a
+    three-line book (`… w KQkq - 2 4`, opcodes with a quoted `hmvc`,
+    neither) and reads `position fen … 2 4`, `… 2 3` and `… 0 1` from both
+    engines' command logs and the counts from `resolved-config.json`; a
+    second slices the book and finds the counters; the engine unit test
+    covers each source, defaults and chunked parsing. On the old loader the
+    CLI test reads `0 1` for all three. The parity matrix plays no book, and
+    the oracle replay is the required suite's statistics fixtures.
+  - **12.10 Node-budget compliance in the summary — `I1`, DONE 2026-11-18.**
+    Rarog request 13. With a node budget, `results.txt` and the telemetry
+    give each side's largest reported node count and the number of moves
+    that reported more than that side's budget, so an engine that overshoots
+    or ignores its budget is visible. Tests: a fixture engine that ignores
+    its budget is named with its count of moves over; a compliant run
+    reports none. Done: the runner writes `WhiteNodeBudget` /
+    `BlackNodeBudget` tags for a side whose control is a node count, and the
+    telemetry holds each post-opening move's `n=` against its own game's
+    budget: `node_budget` (budget, moves under it, moves that reported
+    nodes, largest count, moves over), printed by `results.txt` and `stats`.
+    The fixture's `--reported-nodes` makes a side ignore its budget; the CLI
+    tests play 1,000-node matches where one side reports 5,000 (8 of 8 moves
+    over, named in `results.txt`, the run record and `stats`) and where both
+    comply (none over), and fail on the old code with no `node_budget`; a
+    unit test covers a budget per game, book moves and moves without `n=`.
+    Nothing a game plays changed, so no replay or parity check applies.
+  - **12.11 SPSA gradient and gain reads — `R2`, then `I2`.** Basilisk's
+    request and the measurement half of Rarog request 9. Both
+    projects judge whether a tune still has gradient with their shared
+    `tools/spsa_read.py`, which regenerates the runner's ChaCha12 sign
+    stream and re-derives every move from the schedule, so it depends on
+    the CLI's internals and would break silently if either changed. The
+    runner owns the signs, the schedule and the centres, so it computes
+    the reads. Basilisk asks for the numbers only; Rarog also asks for a
+    verdict and for tunes that stop themselves.
+
+    Basilisk's request, the measurement: a read-only command, safe while a
+    tune runs as `spsa history` is, `spsa read <run-dir> [--from K0]
+    [--to K1] [--json] [--null-reps N] [--null-seed S] [--gain-segment G]
+    [--forecast-span F]`; the window defaults to the last 1,000 completed
+    iterations (all, if fewer), then 40, 1, 500 and 2,000. With
+    `delta[k][i]` the sign drawn for coordinate `i` at iteration `k` and
+    `D[k]` the plus side's wins minus losses:
+    - per coordinate `z[i] = Σ delta[k][i]·D[k] / sqrt(Σ D[k]²)` (mean 0,
+      variance exactly 1 without gradient, because the runner drew the
+      signs), and the Elo across one perturbation, `695 / (2 ×
+      games_per_iteration)` per unit of mean `D`, with its standard error;
+    - the familywise line for `n` coordinates at family alpha 0.05,
+      `Φ⁻¹(1 − (1 − (1 − α)^(1/n)) / 2)`, the largest `|z|` and the
+      coordinates over it; the excess `Σ z² − n` in units of its null SD
+      `sqrt(2n)`;
+    - the cross-fitted gain read: in each segment of `G` iterations, the
+      gradient estimated on the even iterations times each coordinate's
+      actual move summed over the odd ones, and the reverse, summed over
+      coordinates, in Elo, since iteration 0 and in the window, each with
+      the SD of `N` seeded re-draws with every sign randomised;
+    - an optional forecast, labelled an upper bound: the next `F`
+      iterations' gain from the window's excess held constant through the
+      remaining schedule (`ratio_k × c_k²` against the window's mean
+      `c_k²`), with its null SD;
+    - rails: a centre within one current perturbation of a bound while its
+      `z` points outward, with the distance, the `z` and the share of
+      iterations on which either arm was clamped; the run's own fault
+      counters;
+    - integrity: every move re-derived as `r_k · c_k · D · delta` (clamped
+      where it was) against the journal, the worst deviation reported; a
+      mismatch is an error, not a warning.
+
+    Text is a summary block and one row per coordinate (name, `z`, Elo
+    across a perturbation, centre, start, rounded value, clamp share, rail
+    flag); `--json` is the same under schema `colosseum-spsa-read-v1` with
+    stable field names; exit 0 for a read, non-zero for an unreadable or
+    inconsistent run. No change to `spsa` runs, `spsa history` or the
+    run-directory format; the user documentation and the changelog state
+    the sign-stream and schedule definitions the read relies on, so a
+    change to either becomes a versioned break.
+
+    Rarog's request 9, the policy: `spsa status` prints the checkpoint
+    verdict of Rarog's per-coordinate gradient test — quiet, live, a centre
+    pushed outward at a bound, or faults — and a run file registers
+    checkpoints (iteration 2,000, then every 1,000), so a tune stops itself
+    at a quiet one and continues on a live one. Basilisk asks for the
+    opposite: no checkpoint grid, stop verdict or project threshold in the
+    CLI, the caller reading `spsa read --json` and pausing with
+    `--stop-after-iteration`.
+
+    Decided with the maintainer, 2026-11-14:
+    - *What is general goes in the CLI; what is not stays in the projects.*
+      The window's live/quiet test is general: a test of "no gradient in
+      the window" with a known null, like LOS. Live means some `|z|` reaches
+      the familywise line or the excess reaches its line; both lines are
+      stated parameters (family alpha 0.05, excess 2 null SD by default).
+      It is reported with what quiet rules out (no coordinate worth more
+      than the line times its standard error, and the forecast's upper
+      reading). A stop verdict is not general. Read at a checkpoint grid,
+      it becomes a sequential decision whose error rates depend on the grid
+      and are computed by nobody. The ceiling, the acceptance of faults, and
+      what a rail or a stop means (writing theta, registering a range again)
+      are project process. `spsa status` already promises never to advise
+      continuing or abandoning a tune. So the CLI has no checkpoint grid,
+      CONTINUE/STOP verdict or self-stopping run file. Rarog keeps its rule
+      7c verdict in its wrapper, reading `spsa read --json` and pausing
+      with `--stop-after-iteration`. Request 9's policy half is declined
+      here, and its measurement half is this step.
+    - *A new command.* `spsa read`, with its own versioned schema;
+      `spsa status` stays the lifecycle view.
+    - *The reference.* `spsa_read.py` at a pinned revision, with its
+      `test_spsa_read.py` cases and the runs Basilisk exports committed as
+      fixtures, reproduced to the digit. The `R2` part pins each definition
+      against them before any code.
+
+    Tests: golden vectors on small synthetic runs, a planted gradient
+    reading live and over the line and none reading quiet, with `z`
+    variance about 1 over many seeds; the gain read's mean about 0 over
+    sign-randomised runs; a tampered journal or a wrong seed failing
+    loudly; the agreement fixtures. 12.13 keeps the reads working on a
+    barrier-free tune.
+  - **12.12 Moves-per-period time controls — `I2`.** Rarog request 4. Per
+    side, N moves in T, repeating, with an optional increment: `go`
+    carries `movestogo` with the moves left in the period, the clock is
+    refilled at each period boundary, and the PGN `TimeControl` tag is
+    written in the standard form (`40/900`). `match`, `sprt`, `tournament`,
+    the gauntlet and run files accept it. It is the one experiment family
+    an engine cannot run through the CLI today. A test at `10/5` asserts
+    `movestogo 10` on each side's first move, `1` on the tenth and the
+    refilled clock on the eleventh.
+  - **12.13 SPSA without an iteration barrier — `R2`, then `I2`.** Rarog
+    request 1. Reopens 10.9t
+    ([record](docs/architecture/phase-10-record.md), item (ad)) on Rarog's
+    evidence (RAR-M88): tunes filled 80% of their slots against 98% for
+    matches on the same slots, engine and clock, because an iteration
+    lasts as long as its slowest slot; about 1.24× the games per hour are
+    available. The `R2` part chooses between (ad)'s overlapped iterations
+    (one update stale, applied strictly in order) and a per-pair update as
+    results arrive, and records it. Whatever is chosen keeps exact replay —
+    the journal records for each unit the perturbation it played, the
+    centre it was played at, and the order updates were applied — resume
+    from the run directory, the gain schedule stated per update (scaled in
+    the run file if the unit changes), the synchronous mode, unchanged, as
+    an option, and 12.11's reads, with the unit stated. (ad)'s fit-quality
+    evidence is required before it becomes the default. Check: under
+    RAR-M88's conditions slot fill above 95% and at least 1.15× its games
+    per hour; a synchronous run identical to 0.5.0's. 10.9p stays deferred
+    behind it.
+  - **12.14 Placement for engines with more than one thread — `I2`.** Rarog
+    request 5. An automatic slot holds both SMT siblings of its cores, and
+    Windows packs a four-thread engine onto two or three cores' siblings
+    in it (Rarog's 4T/1T ratio read 2.5–2.7 against 4.03 sibling-free).
+    When any engine in a slot runs more than one thread, `--placement
+    auto` gives the slot one logical CPU per physical core and no
+    sibling; the resolved configuration names the policy applied. Tests
+    on synthetic topologies; Rarog's 4T/1T ratio near 4 is the field
+    check. 10.9h stays deferred.
+  - **12.15 Host load: measured and reported, the wait the client's —
+    `R2`, then `I2`.** Rarog requests 6 and 10, one sampler. Signed off
+    by the maintainer 2026-11-14, with no wait by default. The rule it follows is
+    12.11's: the CLI measures and reports, the client decides. The CLI
+    alone knows the run's game CPUs and has the per-platform adapters, so
+    the measurement is the CLI's. Whether a busy host is worth waiting for
+    is each client's policy, so the wait is an option with defaults, never
+    a fixed rule.
+    - *One sampler.* Each game CPU's busy share outside the run's own
+      engine processes, a few samples a second, off the game path. The
+      game CPUs come from the placement plan, or are every allowed CPU when
+      placement is off. Windows first; Linux and macOS have an adapter or a
+      stated fallback.
+    - *A query.* `colosseum-cli host-load [--window S] [--cpus <list>]
+      [--json]` is read-only. It reads each logical CPU's busy share over
+      the window, and with a run file or command line the game CPUs that
+      run would use. A client can decide before it launches anything, and
+      no client needs its own per-OS sampler.
+    - *The start reading.* Before the first game, every run reads its game
+      CPUs over `--idle-window` (default 3 s, long enough to absorb a
+      desktop application's bursts). It records the reading in the run
+      record and the `--json` output, and prints it when busy, so a start
+      is never unrecorded.
+    - *The wait, the client's.* `--idle-wait S` waits up to `S` seconds for
+      a whole window in which no game CPU is busier than `--idle-threshold`
+      (default 20%) outside the run. `--on-busy start|refuse` decides at
+      the deadline: start with the busy reading recorded and flagged
+      (default), or exit before any game with a documented exit code.
+      The default is `--idle-wait 0`, no wait: a default wait would add
+      up to its deadline to every scripted run, test and CI job on a loaded
+      machine without anyone asking for it. Rarog passes, say,
+      `--idle-wait 600 --on-busy refuse`, and the desktop application its
+      own choice.
+    - *During the run.* The run record and `status` keep, per game CPU,
+      the share of seconds above the threshold. A progress block gains a
+      `host` line only while a game CPU is disturbed. `results.txt` flags a
+      run past `--disturbance-limit` (default 5% of the run's seconds on
+      any game CPU) and names the CPUs. There is no pause between games: a
+      run never changes its own pace, so its timing stays comparable.
+    - Run files take the same keys. Like the progress options, none of
+      them is part of the run's identity.
+
+    The `R2` part confirms what each platform's adapter can measure, and
+    the remaining defaults against a real disturbed run, before code.
+    Tests: a CPU-bound process started on one
+    game CPU partway through is flagged and named, and an undisturbed run
+    is not; a run started beside a busy process with `--idle-wait` waits,
+    starts within seconds of the process ending, and with `--on-busy
+    refuse` exits at its deadline having played nothing; `host-load
+    --json` reports a planted busy CPU.
+  - **12.16 The clock left on every move — `I1`.** Rarog request 7. The
+    mover's clock after the move, in milliseconds, in each PGN move
+    comment, with the annotation writer's version bumped. A test asserts
+    each move's clock equals that side's previous one minus `t` plus the
+    increment.
+  - **12.17 The conversion read in `results.txt` — `I1`.** Rarog request 8.
+    Per engine, the draws and losses after it held at least a minor
+    piece's material advantage for 12 plies, a lone minor excluded, per
+    1,000 games, with the threshold and persistence stated. A test on a
+    committed gauntlet PGN equals Rarog's `tools/diag/conversion_audit.py`.
+  - **12.18 Release builds for Linux ARM64 and Intel macOS — `M`.** Rarog
+    request 3. `aarch64-unknown-linux-gnu` and `x86_64-apple-darwin` in the
+    release matrix if the maintainer wants those platforms, each asset
+    smoked with `--version` and a short `match`; declaring them supported
+    follows the recurring procedure.
 
 **Exit criterion (b):** each step's tests pass, the command reference is
 regenerated, `CHANGELOG.md` Unreleased names each change, and the run

@@ -678,6 +678,24 @@ async fn play(
     let game_start = std::time::Instant::now();
     let monotonic_resolution_ns = monotonic_resolution_ns();
 
+    // A start position that does not parse is an error before any engine
+    // starts: the engines would be sent that FEN while the harness judged a
+    // different game.
+    let mut pos = match initial_position(spec.start_fen.as_deref()) {
+        Ok(pos) => pos,
+        Err(message) => {
+            for engine in kept.into_iter().flatten() {
+                engine.quit().await;
+            }
+            let mut report = refused_start(&spec, monotonic_resolution_ns, message);
+            report.stats.duration_ms = Some(game_start.elapsed().as_millis() as u64);
+            if let Ok(mut lg) = live.lock() {
+                lg.finished = Some((report.result, report.termination));
+            }
+            return (report, [None, None]);
+        }
+    };
+
     // Both engines are spawned, handshaken and configured at once: an old
     // engine's slow start no longer delays the other's, and neither side's
     // setup waits in line. Each side keeps its own outcome, so a failure's
@@ -701,7 +719,6 @@ async fn play(
         }
     };
 
-    let mut pos = initial_position(spec.start_fen.as_deref());
     let mut clocks = Clocks::new(&spec.white_time_control, &spec.black_time_control);
 
     let mut san_moves: Vec<String> = Vec::new();
@@ -777,7 +794,8 @@ async fn play(
         let position = build_uci_position(spec.start_fen.as_deref(), &uci_moves);
 
         let (limits, deadline) = move_limits(
-            time_control_for(&spec, mover),
+            &spec.white_time_control,
+            &spec.black_time_control,
             &clocks,
             mover,
             time_margin_for(&spec, mover),
@@ -1055,7 +1073,8 @@ async fn play(
             ponder_moves.push(hint_uci.clone());
             let ponder_pos = build_uci_position(spec.start_fen.as_deref(), &ponder_moves);
             let (ponder_limits, _) = move_limits(
-                time_control_for(&spec, mover),
+                &spec.white_time_control,
+                &spec.black_time_control,
                 &clocks,
                 mover,
                 time_margin_for(&spec, mover),
@@ -1366,24 +1385,32 @@ impl Clocks {
 }
 
 /// Build the `go` limits and the hard wall-clock deadline for the side to move.
+///
+/// The mover's own control decides the kind of limit. On a clock, each side's
+/// remaining time and increment come from that side's own control, so with
+/// unequal clocks the mover is told its opponent's real increment.
 fn move_limits(
-    tc: &TimeControl,
+    white_tc: &TimeControl,
+    black_tc: &TimeControl,
     clocks: &Clocks,
     mover: Color,
     tolerance: Duration,
 ) -> (GoLimits, Duration) {
+    let tc = match mover {
+        Color::White => white_tc,
+        Color::Black => black_tc,
+    };
     match tc {
         TimeControl::PerMove { ms } => {
             let mt = Duration::from_millis(*ms);
             (GoLimits::MoveTime(mt), mt + tolerance)
         }
         TimeControl::SuddenDeath { .. } | TimeControl::Increment { .. } => {
-            let inc = tc.increment();
             let limits = GoLimits::Clock {
                 wtime: clocks.white,
                 btime: clocks.black,
-                winc: inc,
-                binc: inc,
+                winc: white_tc.increment(),
+                binc: black_tc.increment(),
             };
             // The mover must answer within their remaining time (plus IO grace).
             (limits, clocks.remaining(mover) + tolerance)
@@ -1499,14 +1526,48 @@ fn build_uci_position(start_fen: Option<&str>, moves: &[String]) -> UciPosition 
     }
 }
 
-fn initial_position(start_fen: Option<&str>) -> Chess {
-    match start_fen {
-        None => Chess::default(),
-        Some(fen) => fen
-            .parse::<shakmaty::fen::Fen>()
-            .ok()
-            .and_then(|f| f.into_position(CastlingMode::Standard).ok())
-            .unwrap_or_default(),
+/// The position a game starts from, or why its FEN is not one.
+fn initial_position(start_fen: Option<&str>) -> Result<Chess, String> {
+    let Some(fen) = start_fen else {
+        return Ok(Chess::default());
+    };
+    fen.parse::<shakmaty::fen::Fen>()
+        .map_err(|error| error.to_string())
+        .and_then(|parsed| {
+            parsed
+                .into_position(CastlingMode::Standard)
+                .map_err(|error| error.to_string())
+        })
+        .map_err(|error| format!("the start position `{fen}` is not a legal position: {error}"))
+}
+
+/// The report of a game refused before its engines started: its start
+/// position does not parse. Unscorable, and an infrastructure fault naming
+/// the game and the FEN, so the run stops rather than counting it.
+fn refused_start(spec: &GameSpec, monotonic_resolution_ns: u64, message: String) -> GameReport {
+    let message = format!("game {}: {message}", spec.round);
+    let outcome = Outcome::infrastructure("start-position", message);
+    GameReport {
+        game_id: spec.game_id,
+        white: spec.white.id,
+        black: spec.black.id,
+        result: outcome.result,
+        scorable: outcome.scorable,
+        termination: outcome.termination,
+        stats: GameStats::default(),
+        san_moves: Vec::new(),
+        uci_moves: Vec::new(),
+        pgn: render_pgn(spec, &[], &[], outcome.result, outcome.termination, None),
+        clock_accounting: clock_accounting_report(
+            spec,
+            monotonic_resolution_ns,
+            None,
+            None,
+            None,
+            None,
+        ),
+        fault: outcome.fault,
+        error: outcome.error,
     }
 }
 
@@ -1705,6 +1766,12 @@ fn render_pgn(
             u64::try_from(spec.white_time_margin.as_millis()).unwrap_or(u64::MAX),
             u64::try_from(spec.black_time_margin.as_millis()).unwrap_or(u64::MAX),
         ]),
+        node_budgets: [&spec.white_time_control, &spec.black_time_control].map(|control| {
+            match control {
+                TimeControl::Nodes { nodes } => Some(*nodes),
+                _ => None,
+            }
+        }),
         slot: spec.slot,
         forfeited_search,
     };
@@ -1770,7 +1837,7 @@ mod tests {
     fn per_move_limits_are_constant_per_move() {
         let tc = TimeControl::PerMove { ms: 200 };
         let clocks = Clocks::new(&tc, &tc);
-        let (limits, deadline) = move_limits(&tc, &clocks, Color::White, TOL);
+        let (limits, deadline) = move_limits(&tc, &tc, &clocks, Color::White, TOL);
         assert_eq!(limits, GoLimits::MoveTime(Duration::from_millis(200)));
         assert_eq!(deadline, Duration::from_millis(250));
     }
@@ -1781,7 +1848,7 @@ mod tests {
         let mut clocks = Clocks::new(&tc, &tc);
         assert_eq!(clocks.white, Duration::from_millis(1000));
 
-        let (limits, deadline) = move_limits(&tc, &clocks, Color::White, TOL);
+        let (limits, deadline) = move_limits(&tc, &tc, &clocks, Color::White, TOL);
         assert_eq!(
             limits,
             GoLimits::Clock {
@@ -1812,6 +1879,50 @@ mod tests {
         // An overrun beyond remaining plus margin forfeits before increment.
         assert!(!clocks.accept_and_charge(&tc, Color::Black, Duration::from_millis(751), TOL));
         assert_eq!(clocks.black, Duration::from_millis(700));
+    }
+
+    #[test]
+    fn unequal_clocks_send_each_side_its_own_increment() {
+        let white = TimeControl::Increment {
+            base_ms: 10_000,
+            inc_ms: 100,
+        };
+        let black = TimeControl::Increment {
+            base_ms: 11_270,
+            inc_ms: 113,
+        };
+        let clocks = Clocks::new(&white, &black);
+        let expected = GoLimits::Clock {
+            wtime: Duration::from_millis(10_000),
+            btime: Duration::from_millis(11_270),
+            winc: Duration::from_millis(100),
+            binc: Duration::from_millis(113),
+        };
+        // Either side to move is told both increments as they are, and its
+        // deadline is its own remaining time.
+        let (limits, deadline) = move_limits(&white, &black, &clocks, Color::White, TOL);
+        assert_eq!(
+            (limits, deadline),
+            (expected, Duration::from_millis(10_050))
+        );
+        let (limits, deadline) = move_limits(&white, &black, &clocks, Color::Black, TOL);
+        assert_eq!(
+            (limits, deadline),
+            (expected, Duration::from_millis(11_320))
+        );
+
+        // Colours reversed, the increments follow the controls.
+        let clocks = Clocks::new(&black, &white);
+        let (limits, _) = move_limits(&black, &white, &clocks, Color::White, TOL);
+        assert_eq!(
+            limits,
+            GoLimits::Clock {
+                wtime: Duration::from_millis(11_270),
+                btime: Duration::from_millis(10_000),
+                winc: Duration::from_millis(113),
+                binc: Duration::from_millis(100),
+            }
+        );
     }
 
     #[test]
@@ -1846,12 +1957,12 @@ mod tests {
     fn nodes_and_depth_use_fixed_limits_and_safety_deadline() {
         let nodes = TimeControl::Nodes { nodes: 50_000 };
         let clocks = Clocks::new(&nodes, &nodes);
-        let (limits, deadline) = move_limits(&nodes, &clocks, Color::White, TOL);
+        let (limits, deadline) = move_limits(&nodes, &nodes, &clocks, Color::White, TOL);
         assert_eq!(limits, GoLimits::Nodes(50_000));
         assert_eq!(deadline, FIXED_SEARCH_DEADLINE);
 
         let depth = TimeControl::Depth { depth: 12 };
-        let (limits, deadline) = move_limits(&depth, &clocks, Color::Black, TOL);
+        let (limits, deadline) = move_limits(&depth, &depth, &clocks, Color::Black, TOL);
         assert_eq!(limits, GoLimits::Depth(12));
         assert_eq!(deadline, FIXED_SEARCH_DEADLINE);
     }

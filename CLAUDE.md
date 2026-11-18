@@ -92,13 +92,15 @@ oracle replay and parity checks (`GUIDE.md`, recurring procedures).
 
 ## Implementation and commits
 
-`GUIDE.md` numbered items are implemented in order, with the phase exit
+Numbered steps are implemented in PLAN §S8's order of work (GUIDE's board,
+generated from PLAN by `python tools/guide_board.py`), with the phase exit
 demonstrated before proceeding. Complete one numbered step—including tests,
 documentation and status evidence—then commit it before starting the next.
 Use a short imperative subject naming the outcome, preferably including the
 step identifier. Never add `Co-authored-by` or assistant-attribution trailers.
 Work happens on a short-lived branch from `master` that lands as one squash
-commit through a pull request with a short, simple title and description;
+commit through a pull request with a short, simple title and description
+(no " (#N)" pull-request number in the squash subject);
 nothing is pushed to `master` directly, and a release is an annotated `vX.Y.Z`
 tag on the merged `master` (`docs/DEVELOPMENT.md` *Delivery* and
 *Releases*). The full worktree, architecture and commit rules

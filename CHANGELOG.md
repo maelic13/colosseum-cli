@@ -6,7 +6,47 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- A tune with `--stop-after-iteration` below its total reports how long is
+  left to the stop as well as to the end: a `time to stop` line in every
+  progress block and its `run.log` entry, and the time to the stop in
+  `spsa status` (`eta.stop_point` in JSON). Both come from the same
+  observed rate; a resume with a new stop reports the new one
+- `results.txt` of a `match`, `sprt` or `calibrate` run starts with its
+  paired score: Elo and nElo with their 95% intervals, and the pentanomial,
+  in the words the progress block uses; `run-record.json` and the `--json`
+  value carry the same under `results.paired`
+- With a node budget, `results.txt`, `stats` and the telemetry
+  (`node_budget`) give each side's largest reported node count and how many
+  of its moves reported more nodes than its budget, so an engine that
+  overshoots or ignores its budget is visible. The PGN names each budgeted
+  side's budget in `WhiteNodeBudget` / `BlackNodeBudget` tags
+
+### Fixed
+- A `match` run record's `official_sample` holds the pentanomial and the
+  complete pairs of the paired sample; it held five zeros
+- With a different clock for each side, an engine is told its opponent's
+  own increment: `winc` comes from White's control and `binc` from
+  Black's. Before, the engine to move was sent its own increment as both.
+  Games where both sides have the same clock are unchanged
+- A game whose start position does not parse is refused with an error
+  naming the game and the FEN, and the run stops; it was played from the
+  standard position while the engines were sent the FEN. Books are checked
+  when they load, so no run is known to have reached it
+- An EPD opening keeps its move counters: the halfmove clock and fullmove
+  number after the four EPD fields, or the `hmvc` and `fmvn` opcodes, reach
+  the engines instead of `0 1` always. A line with neither still starts at
+  `0 1`. Games from a book with counters change: an engine that plans its
+  time by move number sees the real one, and the 50-move rule counts from
+  the book's clock
+
 ### Changed
+- `book slice` writes whole FENs, move counters included, so a shard plays
+  as its book does; it wrote the four EPD fields alone
+- A run from an EPD book records where its positions' move counters came
+  from (`openings.move_counters` in the resolved configuration). That
+  changes the configuration of every EPD run, so an interrupted EPD-book run
+  started by an earlier version is refused on resume; start it again
 - Colosseum CLI has its own repository,
   [maelic13/colosseum-cli](https://github.com/maelic13/colosseum-cli), and
   releases are tagged `vX.Y.Z`; the earlier `cli-v` releases carry the same

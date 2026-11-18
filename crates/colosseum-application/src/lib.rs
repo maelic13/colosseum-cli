@@ -55,8 +55,8 @@ pub use spsa_status::{
     SPSA_DIAGNOSTIC_MIN_HISTORY, SPSA_FREQUENT_BOUND_CONTACT_FRACTION,
     SPSA_LITTLE_MOVEMENT_RANGE_FRACTION, SPSA_RECENT_STABILITY_RANGE_FRACTION,
     SPSA_STATUS_SCHEMA_VERSION, SpsaEta, SpsaHeuristic, SpsaHeuristicState, SpsaKnobDiagnostics,
-    SpsaStatusError, SpsaStatusReport, SpsaThirdSummary, SpsaThirdsComparison, SpsaTrajectoryPoint,
-    diagnose_spsa,
+    SpsaStatusError, SpsaStatusReport, SpsaStopPointEta, SpsaThirdSummary, SpsaThirdsComparison,
+    SpsaTrajectoryPoint, diagnose_spsa,
 };
 pub use stats_plan::{
     AchievedResolutionReport, FixedPlanObjective, FixedPlanReport, FixedPlanRequest,

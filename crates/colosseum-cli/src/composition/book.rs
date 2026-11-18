@@ -364,7 +364,9 @@ pub(crate) fn slice_book(command: &BookSliceCommand) -> Result<BookSliceReport, 
     for opening in &selected {
         let fen = fen_after(opening.start_fen.as_deref(), &opening.moves)
             .ok_or_else(|| format!("cannot materialize opening {:?}", opening.label))?;
-        output.push_str(&fen.split_whitespace().take(4).collect::<Vec<_>>().join(" "));
+        // The whole FEN: the four EPD fields and the move counters, so a
+        // slice plays as its book does.
+        output.push_str(&fen);
         output.push('\n');
     }
     let mut options = OpenOptions::new();

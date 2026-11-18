@@ -56,6 +56,11 @@ jobs:
       - name: Check generated CLI documentation
         run: cargo run -p colosseum-docs -- --check
 
+      - name: Check GUIDE board against PLAN
+        run: |
+          python3 tools/guide_board.py --self-test
+          python3 tools/guide_board.py --check
+
       - name: Check workspace tests
         run: cargo check --workspace --tests
 

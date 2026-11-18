@@ -3,11 +3,13 @@
 Read this file, [`CLAUDE.md`](CLAUDE.md), [`PLAN.md`](PLAN.md), and
 [`GUIDE.md`](GUIDE.md) before implementation work. `CLAUDE.md` describes the
 existing application and conventions; `PLAN.md` is the binding CLI
-specification; `GUIDE.md` is the ordered implementation tracker.
+specification and the source of every step; `GUIDE.md` is the ordered
+implementation tracker, its board generated from `PLAN.md`.
 
 ## Scope and architecture
 
-- Implement numbered `GUIDE.md` steps in order. Do not skip a phase exit.
+- Implement numbered steps in PLAN §S8's order of work (the board's Now
+  first). Do not skip a phase exit.
 - The evidence of completed phases lives under `docs/architecture/` (exit
   documents, ADRs, the Phase 0–9 and Phase 10 records). Do not re-derive or
   re-litigate what they record; extend them when a step adds evidence.
@@ -21,6 +23,11 @@ specification; `GUIDE.md` is the ordered implementation tracker.
   build/bench requirements, compiler inspection, or engine-specific logic.
 - Treat existing engine crashes and protocol quirks as real supported input
   conditions. Never hide them by weakening diagnostics or fault classification.
+- Tooling stays platform-independent although development is on Windows:
+  builds, packaging and release checks are `cargo xtask`; any other new tool
+  or script is Python 3 on the standard library, run as `python <path>`.
+  Add no new PowerShell or shell scripts; the existing two are ported to
+  Python when they next need a change.
 
 ## Step and commit discipline
 
@@ -48,10 +55,12 @@ The maintainer owns every remote operation.
 - The squash message — the pull request's title and description, which is
   all that reaches `master` — is short and simple: an imperative title that
   says what changed ("Report the time to an SPSA stop"; a release is
-  "Release 0.6.0"), with no phase, step or plan references; then a few plain
-  lines on what and why, wrapped at 72 columns; then, after an empty line,
-  the verification, one line each ("Tests: cargo test --workspace
-  --all-targets, 1,204 passed").
+  "Release 0.6.0"), with no phase, step or plan references and no
+  pull-request number (GitHub appends " (#N)" to a squash subject: remove
+  it, and give `gh pr merge --squash` an explicit `--subject` whenever a
+  merge is not done by hand); then a few plain lines on what and why,
+  wrapped at 72 columns; then, after an empty line, the verification, one
+  line each ("Tests: cargo test --workspace --all-targets, 1,204 passed").
 - The Rust toolchain is pinned in `rust-toolchain.toml`. Never change it as
   part of other work: a toolchain update is its own pull request, "Rust
   X.Y.Z", with only the bump and the fixes its new lints need
@@ -60,8 +69,9 @@ The maintainer owns every remote operation.
   `[Unreleased]` in the commit that makes it, written for users. A release
   only dates that section.
 
-`PLAN.md` §S8 records each open step's capability class (`R3`, `R2`, `I2`,
-`I1`, `M`, `V`), mirrored on the numbered `GUIDE.md` item; `GUIDE.md`'s
+Each step's head in `PLAN.md` records its capability class (`R3`, `R2`,
+`I2`, `I1`, `M`, `V`), which GUIDE's generated board shows and §S8's class
+table repeats; `GUIDE.md`'s
 "Current model mapping" table is the single maintainer-edited source that
 maps a class to the current Claude model and thinking mode. Whenever
 reporting the next step, name it with its class and recommend the mapped
@@ -69,8 +79,8 @@ model and mode as `Claude: <model> — <mode>` with a brief task-specific
 reason; do not substitute newer models, and never change the active model
 automatically. If an `I1`, `M` or `V` step exposes a material design choice
 not settled by the plan, stop and continue it as `R2` rather than inventing
-the contract; never silently downgrade a recorded class. Keep classes
-synchronized between PLAN and GUIDE.
+the contract; never silently downgrade a recorded class. Keep the head
+and §S8's table in step.
 
 1. Start from a clean worktree, or identify and preserve pre-existing user
    changes. Never stage unrelated files.
@@ -80,12 +90,10 @@ synchronized between PLAN and GUIDE.
    checks from `CLAUDE.md`.
 4. Demonstrate the exit criterion. A compiling change is not automatically
    complete.
-5. Always mark the finished step `☑` in `GUIDE.md` with the required outcome
-   label in the same change. Add corresponding status/evidence to `PLAN.md`
-   when it improves the durable specification or records a consequential
-   result; do not duplicate routine detail there. Use `☐` for todo and `◐`
-   only while genuinely in progress; do not use GitHub `[ ]` task syntax
-   because not every Markdown renderer displays it reliably.
+5. In the same change, mark the finished step's PLAN head `DONE <date>`
+   (or its other outcome), remove its row from §S8 *Order of work*, add the
+   evidence to the step's PLAN text, and regenerate GUIDE's board with
+   `python tools/guide_board.py` (*Documentation ownership* below).
 6. Commit the completed step before starting another numbered step.
 
 Use a short imperative commit subject that names the outcome, preferably with
@@ -133,8 +141,26 @@ consistency validation; they do not require rerunning unchanged Rust tests.
 
 - `PLAN.md` and `GUIDE.md`: maintainer-facing specification and tracker.
   `PLAN.md` carries the binding specifications and only the open work;
-  completed phases are one line in `GUIDE.md` and a record file under
+  a completed phase is a `— CLOSED` heading in `PLAN.md` over a
+  one-paragraph summary, which the board shows, and a record file under
   `docs/architecture/`.
+- GUIDE's board is generated from `PLAN.md` by `python
+  tools/guide_board.py`; never edit it by hand, and run `python
+  tools/guide_board.py --check`, which CI runs too, rather than reading
+  it. A phase is a `### Phase N — <name>` heading. A step head is a list
+  item whose bold run reads ``**<ID> <title> — <field>.**``, wrapped if
+  need be: `<ID>` is `N.M` or `N.M.K` under Phase `N` and is never reused
+  or renumbered once work on it has started (insert with a dotted suffix,
+  `12.9.1` after `12.9`); the title is what the board shows; the field
+  names the classes in backticks ("`R2`, then `I2`" for a two-part step)
+  and may say EXIT, IN PROGRESS, or an outcome — DONE, REJECTED,
+  DEFERRED, PARKED, FIXED or CLOSED — with an optional date. §S8 *Order of
+  work* lists the open steps in the order they are taken, one `| <ID> |
+  <waits for> |` row each, and its first row is the board's Now. Requests
+  that overlap are one step, with their open questions settled with the
+  maintainer before its code. A finished phase's heading gains `— CLOSED
+  <date>` over the one-paragraph summary the board shows, and its text
+  moves to a record under `docs/architecture/`.
 - `README.md`, `packaging/cli/README.md` (staged as the CLI archive's `README.md`) and
   `docs/cli/`: user-facing; no phase numbers or internal method
   argumentation.

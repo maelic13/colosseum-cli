@@ -38,6 +38,9 @@ Each side has an independent time control. Select at most one mode per side:
 | Fixed nodes | `--a-nodes N` | `--b-nodes N` |
 | Fixed depth | `--a-depth N` | `--b-depth N` |
 
+Every `go` on a clock tells the engine both sides' own time and increment:
+`wtime` and `winc` from White's control, `btime` and `binc` from Black's.
+
 With no selection, that side uses `3000 ms + 30 ms` per move. The per-side
 `--a-margin-ms` and `--b-margin-ms` values are forfeit tolerances only; they are
 not sent to the engines. The default is 20 ms: a move forfeits when it arrives
@@ -141,7 +144,9 @@ It is written just before the result as `{forfeit t=<ms>ms h=<ms>ms}` with the
 time its answer finally arrived, together with the usual `s=`, `d=` and `n=`
 fields when the engine reported them, or `{forfeit}` when no answer came. The
 `WhiteTimeMarginMs` and `BlackTimeMarginMs` tags name each side's time margin,
-so a PGN alone says how close each move's overhead came to a forfeit, and
+so a PGN alone says how close each move's overhead came to a forfeit;
+`WhiteNodeBudget` and `BlackNodeBudget` name the node budget of a side with a
+fixed node count, so it says which moves searched past it; and
 `GameSlot` names the CPU slot the game ran on, counting from zero.
 
 The writer form is versioned and every run record names the version it used, so
@@ -210,7 +215,10 @@ accepts EPD or PGN (inferred from the extension). `--book-order sequential` is
 the default; `random` uses the versioned `opening-order` named stream from the
 run's `--seed`. If no seed is supplied, a master seed is generated and printed
 in structured output. `--book-start N` selects the zero-based first opening and
-`--book-plies N` controls how many PGN half-moves are pre-played. Each opening
+`--book-plies N` controls how many PGN half-moves are pre-played. An EPD
+position keeps its move counters ([how an EPD line is read](book.md)), and the
+resolved configuration counts the book's positions by where their counters
+came from, under `openings.move_counters`. Each opening
 is assigned to a two-game colour-reversed pair; odd fixed-N matches may end with
 one final half-pair. Output records the assignment for every game. Without
 `--book`, every game starts from startpos and output carries an
@@ -273,10 +281,10 @@ configuration is refused on resume. The directory contains:
 | `games.jsonl` | Append-only journal, one checksummed record per game |
 | `games.pgn` | Portable game export, appended one game at a time |
 | `checkpoint.json` and `checkpoint.previous.json` | Checksummed aggregates and the journal position they cover |
-| `run-record.json` | Versioned lifecycle and official sample |
+| `run-record.json` | Versioned lifecycle and official sample, with its pentanomial |
 | `run.log` | Append-only JSON-lines log of progress blocks, faults, stop and resume |
 | `result.json` | Final structured match report |
-| `results.txt` | Each engine's games by colour, terminations, faults and search, as text |
+| `results.txt` | Elo, nElo and pentanomial, each engine's games by colour, terminations, faults and search, as text |
 | `failed-games/` | Round-trip timing, UCI traffic and stderr for abnormal games |
 
 Progress is written to stderr every `--progress-every N` games, and once more

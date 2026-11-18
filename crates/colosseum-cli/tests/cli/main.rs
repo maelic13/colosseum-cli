@@ -7,6 +7,7 @@
 mod architecture;
 mod calibration;
 mod chess960;
+mod clock_increments;
 mod command_line;
 mod cpu_allocation;
 mod end_of_run_results;
@@ -17,6 +18,8 @@ mod game_phases;
 mod graceful_stop;
 mod journal_recovery;
 mod match_schedule;
+mod move_counters;
+mod node_budget;
 mod nps;
 mod pgn_annotations;
 mod pgn_replay;

@@ -95,8 +95,8 @@ units completed and still to play. It does not repeat games; the journal has
 them.
 
 When the run finishes, `result.json` holds the final structured report,
-`results.txt` the run's results as text — each engine's games by colour, how
-the games ended, the faults and each engine's search, or a tournament's
+`results.txt` the run's results as text — a two-engine run's paired Elo, nElo
+and pentanomial, each engine's games by colour, how the games ended, the faults and each engine's search, or a tournament's
 standings and pairs — which the console report names rather than prints, and
 `failed-games/` keeps a forensic of every abnormal game: the round-trip stamps
 of each side's last five searches — when `go` was written, when the first and

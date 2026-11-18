@@ -174,6 +174,19 @@ as the game's `WhiteTimeMarginMs` / `BlackTimeMarginMs` tags record it:
 Engine A: harness overhead p50 3 ms, p99 11 ms, p999 164 ms, max 320 ms over 58112 moves; 7 of 58112 moves over the time margin
 ```
 
+Where a side played with a node budget, as the game's `WhiteNodeBudget` /
+`BlackNodeBudget` tags record it, that side also gets its largest reported
+node count and how many of its moves reported more nodes than their game's
+budget, so an engine that overshoots or ignores its budget is visible
+(`node_budget` in JSON):
+
+```text
+Engine A: node budget 50,000: largest 50,012 nodes reported; 41 of 58,112 moves over
+```
+
+A move that reported no node count is counted under the budget but not
+compared, and the line says how many there were.
+
 A move over the margin is a move that would have forfeited had the engine
 spent its whole remaining clock: overhead is time the engine never saw. A
 search that lost on time, written `{forfeit t=…ms h=…ms}` before the result,
@@ -234,8 +247,9 @@ subject the outcome is taken from the pair's first engine — the one that had
 White in assignment `1` — which is the perspective the checkpoint uses.
 
 A Colosseum PGN also names, per game, the CPU slot the game ran on
-(`GameSlot`, counting from zero) and each side's time margin
-(`WhiteTimeMarginMs`, `BlackTimeMarginMs`). Statistics never depend on the
+(`GameSlot`, counting from zero), each side's time margin
+(`WhiteTimeMarginMs`, `BlackTimeMarginMs`) and, for a side with a fixed node
+count, its node budget (`WhiteNodeBudget`, `BlackNodeBudget`). Statistics never depend on the
 slot; it is there so a game can be placed on the machine it ran on, and the
 run directory's journal records when the game held it.
 
