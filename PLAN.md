@@ -2657,6 +2657,29 @@ a finite ETA in `spsa status`.
       fixtures, reproduced to the digit. The `R2` part pins each definition
       against them before any code.
 
+    Pinned 2026-11-18, the `R2` part, in
+    [`spsa-read-definitions.md`](docs/architecture/spsa-read-definitions.md):
+    each definition against Basilisk's `spsa_read.py` at `5f61c94`, whose
+    29 tests pass there, the five recorded blocks among them. Decided with
+    the maintainer the same day:
+    - *The null draws are the CLI's.* A new named stream, `spsa-read-null`,
+      from `--null-seed`, not Python's `random`: every other figure agrees
+      with the reference to the digit, the null SD within sampling error,
+      and the fixtures pin the CLI's own null values beside the
+      reference's.
+    - *No rail candidate.* The reference's outward `z` of 2.0 under the
+      line is a project threshold; the CLI reports each coordinate's
+      outward `z` and distance to its bound, and the rail at the line.
+
+    Settled by the definitions, as the request and the decisions of
+    2026-11-14 imply: the window may be shorter than 1,000 when fewer have
+    completed; `Φ⁻¹` is Wichura's AS 241, as Python's `NormalDist` (the
+    core's bisection is off by about 5e-5 at these tails);
+    `--family-alpha` and `--excess-sd` state the two lines; the JSON is
+    unrounded; the integrity check compares the replay with the centres
+    the checkpoint and a finished run's `result.json` keep; exit 0, 2
+    (usage), 1 (unreadable) and 3 (inconsistent).
+
     Tests: golden vectors on small synthetic runs, a planted gradient
     reading live and over the line and none reading quiet, with `z`
     variance about 1 over many seeds; the gain read's mean about 0 over
