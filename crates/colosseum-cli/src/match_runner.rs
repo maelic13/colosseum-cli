@@ -18,8 +18,8 @@ use colosseum_core::{
 use colosseum_engine::{
     AllowedCpuSet, ClockAccountingReport, CoreClass, CpuCharacteristics, CpuPlacementPolicy,
     CpuTopology, EngineCpuPlacement, EngineFaultKind, EngineGameSpec, GameFault, GamePairIdentity,
-    GameSide, GameSlotCpuAllocation, GameSpec, KeptEngine, LiveGameState, OpeningList,
-    ResolvedOpening, SlotAllocation, allocate_game_slots, detect_allowed_cpu_set,
+    GameSide, GameSlotCpuAllocation, GameSpec, KeptEngine, LiveGameState, MoveCounterSources,
+    OpeningList, ResolvedOpening, SlotAllocation, allocate_game_slots, detect_allowed_cpu_set,
     detect_cpu_characteristics, detect_cpu_topology, load_openings_named, plan_cpu_placement,
     run_game, run_game_keeping,
 };
@@ -437,6 +437,11 @@ pub enum OpeningPolicyReport {
         wrap: bool,
         reused_openings: u32,
         reuse_fraction: f64,
+        /// An EPD book's positions by where their move counters came from:
+        /// the two integers after the four EPD fields, the `hmvc` and `fmvn`
+        /// opcodes, or the default `0 1`. Absent for a PGN book.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        move_counters: Option<MoveCounterSources>,
     },
 }
 
@@ -665,6 +670,7 @@ pub fn resolve_openings(
         wrap,
         reused_openings,
         reuse_fraction,
+        move_counters: (book.format == OpeningFormat::Epd).then(|| entries.move_counters()),
     };
     Ok(MatchOpenings {
         entries: Arc::new(entries),

@@ -213,7 +213,10 @@ accepts EPD or PGN (inferred from the extension). `--book-order sequential` is
 the default; `random` uses the versioned `opening-order` named stream from the
 run's `--seed`. If no seed is supplied, a master seed is generated and printed
 in structured output. `--book-start N` selects the zero-based first opening and
-`--book-plies N` controls how many PGN half-moves are pre-played. Each opening
+`--book-plies N` controls how many PGN half-moves are pre-played. An EPD
+position keeps its move counters ([how an EPD line is read](book.md)), and the
+resolved configuration counts the book's positions by where their counters
+came from, under `openings.move_counters`. Each opening
 is assigned to a two-game colour-reversed pair; odd fixed-N matches may end with
 one final half-pair. Output records the assignment for every game. Without
 `--book`, every game starts from startpos and output carries an

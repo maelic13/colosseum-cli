@@ -1841,7 +1841,6 @@ leaves the table in the commit that finishes it.
 
 | Step | Waits for |
 |---|---|
-| 12.9 | — |
 | 12.10 | — |
 | 12.11 | — |
 | 12.12 | — |
@@ -2532,16 +2531,31 @@ a finite ETA in `spsa status`.
     record with a PGN recount and `results.txt` with the recorded progress
     block; `stats_replay` checks the recount leaves out post-terminal and
     unscorable games.
-  - **12.9 An EPD opening keeps its move counters — `I1`.** Rarog request
-    2. `epd_fen_into` keeps an EPD line's four position fields and always
-    appends `0 1`, which shortens a ply-aware engine's thinking on move 1
-    and moves the 50-move rule. Two trailing integers after the four
-    fields and before any opcode are the halfmove clock and the fullmove
-    number; the `hmvc` and `fmvn` opcodes are taken when present;
+  - **12.9 An EPD opening keeps its move counters — `I1`, DONE 2026-11-18.**
+    Rarog request 2. `epd_fen_into` keeps an EPD line's four position fields
+    and always appends `0 1`, which shortens a ply-aware engine's thinking
+    on move 1 and moves the 50-move rule. Two trailing integers after the
+    four fields and before any opcode are the halfmove clock and the
+    fullmove number; the `hmvc` and `fmvn` opcodes are taken when present;
     otherwise `0 1`, as now. The resolved configuration records where the
-    counters came from. This changes what every run from such a book
-    plays. A test asserts `… w KQkq - 2 4` reaches the engine as
-    `position fen … 2 4`, and each source and the default.
+    counters came from. This changes what every run from such a book plays.
+    A test asserts `… w KQkq - 2 4` reaches the engine as `position fen … 2
+    4`, and each source and the default. Done: `epd_fen_into` takes two
+    integers after the four fields as the counters, else the `hmvc`/`fmvn`
+    operations (a `;` inside a quoted operand ends none; either alone
+    defaults the other), else `0 1`, keeping the counters as written; the
+    loaded list counts each source, and `OpeningPolicyReport::Book` records
+    them as `move_counters` (EPD only), so the resolved configuration of
+    every EPD run changes and an earlier version's interrupted EPD run is
+    refused on resume. `book slice` now writes whole FENs, since a shard of
+    four fields lost the counters this step keeps. The CLI test plays a
+    three-line book (`… w KQkq - 2 4`, opcodes with a quoted `hmvc`,
+    neither) and reads `position fen … 2 4`, `… 2 3` and `… 0 1` from both
+    engines' command logs and the counts from `resolved-config.json`; a
+    second slices the book and finds the counters; the engine unit test
+    covers each source, defaults and chunked parsing. On the old loader the
+    CLI test reads `0 1` for all three. The parity matrix plays no book, and
+    the oracle replay is the required suite's statistics fixtures.
   - **12.10 Node-budget compliance in the summary — `I1`.** Rarog request
     13. With a node budget, `results.txt` and the telemetry give each
     side's largest reported node count and the number of moves that

@@ -28,8 +28,20 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   naming the game and the FEN, and the run stops; it was played from the
   standard position while the engines were sent the FEN. Books are checked
   when they load, so no run is known to have reached it
+- An EPD opening keeps its move counters: the halfmove clock and fullmove
+  number after the four EPD fields, or the `hmvc` and `fmvn` opcodes, reach
+  the engines instead of `0 1` always. A line with neither still starts at
+  `0 1`. Games from a book with counters change: an engine that plans its
+  time by move number sees the real one, and the 50-move rule counts from
+  the book's clock
 
 ### Changed
+- `book slice` writes whole FENs, move counters included, so a shard plays
+  as its book does; it wrote the four EPD fields alone
+- A run from an EPD book records where its positions' move counters came
+  from (`openings.move_counters` in the resolved configuration). That
+  changes the configuration of every EPD run, so an interrupted EPD-book run
+  started by an earlier version is refused on resume; start it again
 - Colosseum CLI has its own repository,
   [maelic13/colosseum-cli](https://github.com/maelic13/colosseum-cli), and
   releases are tagged `vX.Y.Z`; the earlier `cli-v` releases carry the same

@@ -11,6 +11,14 @@ colosseum-cli book hash openings.epd
 colosseum-cli book slice openings.pgn subset.epd --plies 12 --count 200 --order random --seed 42
 ```
 
+An EPD line is a position's four FEN fields (board, side to move, castling,
+en passant) followed by optional opcodes. Its move counters — the halfmove
+clock and the fullmove number — are the two integers right after those
+fields when the line has them, as a FEN's last two fields; otherwise the
+`hmvc` and `fmvn` opcodes; otherwise `0 1`. The engines are sent the position
+with those counters, so a book's 50-move clocks and move numbers hold in its
+games.
+
 `verify` accounts for every non-comment EPD line or PGN game. It exits with 1
 and lists one-based rejected candidate indices when any candidate is malformed,
 or when none is usable. Normal parsing never turns rejection into startpos.
@@ -23,9 +31,10 @@ remain explicit and are never mixed.
 
 `slice` first requires a clean verification, then applies the requested start,
 count and sequential or versioned named-stream random order. The output is
-canonical EPD: a PGN opening is replayed and materialized as its resulting
-position. JSON records input/output hashes, seed, order, requested range and
-actual count. Existing output is refused unless `--force` is explicit; input
+one whole FEN per line, move counters included, so a slice plays as its book
+does: a PGN opening is replayed and materialized as its resulting position.
+JSON records input/output hashes, seed, order, requested range and actual
+count. Existing output is refused unless `--force` is explicit; input
 and output must differ.
 
 
