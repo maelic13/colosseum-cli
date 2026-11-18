@@ -148,6 +148,69 @@ above the maximum. JSON rows carry them as `clamped_at_min` and
 `clamped_at_max`, in knob order; the table marks a centre `<N` or `>N`. CSV
 keeps its centres-only shape.
 
+To read whether a tune still has gradient — whether its last iterations
+still say which way each knob should move — read it with `spsa read`, which
+also changes nothing and works while the tune runs:
+
+```text
+colosseum-cli spsa read path/to/spsa-run
+colosseum-cli spsa read path/to/spsa-run --from 2000 --to 3000
+colosseum-cli --json spsa read path/to/spsa-run
+```
+
+It reads a window of completed iterations, by default the last 1,000 (or all
+of them, if fewer have completed), and reports:
+
+- each knob's `z`: the signs the tune drew for it against the mini-match
+  scores, `z = Σ sign × D / sqrt(Σ D²)` over the window, with `D` the plus
+  arm's wins minus its losses. With no gradient it has mean 0 and variance 1,
+  because the tune drew the signs. Beside it, the Elo across one
+  perturbation, `695 / (2 × games per iteration)` per unit of mean `D`;
+- the **familywise line** that `n` knobs pass together with probability
+  `--family-alpha` (0.05), the largest `|z|` and the knobs over it, and the
+  **excess** `Σ z² − n` in units of its null SD `sqrt(2n)`. The window is
+  *live* when some `|z|` reaches the line or the excess reaches
+  `--excess-sd` (2) SD, and *quiet* otherwise; a quiet read also says what it
+  rules out: no knob worth more than the line times its standard error;
+- the **gain read**: what the tune has gained, in Elo, since iteration 0 and
+  in the window. In segments of `--gain-segment` (500) iterations, each knob's
+  gradient measured on the even iterations is multiplied by its actual moves
+  on the odd ones, and the reverse, so no move is scored against the gradient
+  that made it. Each comes with a null SD from `--null-reps` (40) re-draws of
+  every sign, from `--null-seed` (1) on the `spsa-read-null` stream;
+- a **forecast**, an upper bound: the next `--forecast-span` (2,000)
+  iterations' gain if the window's excess held through the rest of the
+  schedule, with its SD; none at the end of the schedule, and `0` turns it
+  off;
+- **rails**: a knob whose centre is within one perturbation of a bound while
+  its `z` points outward past the familywise line, its distance to the bound
+  and its outward `z`; and how often either of its arms was clamped;
+- the run's own fault counters, which decide nothing.
+
+The read never says whether to continue or stop a tune: that is for whoever
+runs it. A project that stops a quiet tune reads `spsa read --json` (schema
+`colosseum-spsa-read-v1`) and pauses the tune with `--stop-after-iteration`.
+
+Before reading, the journal's replay is compared with every record of
+centres the run keeps — the checkpoint's, and a finished tune's
+`result.json` — and a disagreement of more than a millionth of a move is an
+error, exit 3, with nothing read. A window outside the completed iterations
+is exit 2.
+
+The read relies on two definitions that are part of the run directory's
+contract, so a change to either is a versioned break:
+
+- **the signs**: knob `i`'s sign at iteration `k` is the tune's
+  `spsa-perturbations` stream from its master seed, one draw per knob,
+  iteration by iteration in the tune file's order (draw `k × n + i`), each a
+  little-endian `u64` that gives `+1` when odd (see
+  [randomness](randomness.md));
+- **the schedule**: at iteration `k`, counting from 0, the perturbation is
+  `c_k = c0 / (k + 1)^0.102` and the gain `a_k = a0 / (A + k + 1)^0.601`,
+  with `A` a tenth of the iterations and `c0`, `a0` as `spsa-schedule.json`
+  records them, and a centre moves by `a_k / c_k × D × sign`, clamped to the
+  knob's range.
+
 Inspect the last checksum-verified durable snapshot of a running, interrupted
 or completed tune without acquiring ownership or changing any run bytes:
 

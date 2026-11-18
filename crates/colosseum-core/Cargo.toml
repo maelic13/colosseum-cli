@@ -15,5 +15,6 @@ thiserror = "2.0.18"
 uuid = { version = "1.23.2", features = ["serde"] }
 
 [dev-dependencies]
-serde_json = "1.0.150"
+# Exact float parsing, as the CLI reads its run directories.
+serde_json = { version = "1.0.150", features = ["float_roundtrip"] }
 toml = "1.1.2"

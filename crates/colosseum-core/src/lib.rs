@@ -15,6 +15,7 @@ pub mod pairing;
 pub mod rating;
 pub mod rng;
 pub mod spsa;
+pub mod spsa_read;
 pub mod standings;
 pub mod stats;
 pub mod time;
@@ -51,8 +52,8 @@ pub use stats::{
     EloEstimate, EloModel, FixedNAchievedResolution, FixedNPlan, FixedNTestTails,
     NormalizedEloEstimate, PentanomialBin, PentanomialDistribution, PentanomialSprtResult,
     PentanomialStatistics, PentanomialVector, STATS_VERSION, SprtDecision, SprtResult,
-    StatisticsError, elo_with_error, fixed_n_achieved_resolution, fixed_n_plan, los,
-    pentanomial_sprt, pentanomial_statistics, sprt, sprt_wald_bounds,
+    StatisticsError, elo_with_error, fixed_n_achieved_resolution, fixed_n_plan, inverse_normal_cdf,
+    los, pentanomial_sprt, pentanomial_statistics, sprt, sprt_wald_bounds,
 };
 pub use time::TimeControl;
 pub use tournament::{Format, OpeningBook, OpeningFormat, OpeningOrder};

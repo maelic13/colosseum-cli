@@ -571,7 +571,7 @@ fn positional_path_indices(command: &[String]) -> Vec<usize> {
         ["capabilities"] | ["self-test"] => vec![],
         ["match"] | ["calibrate"] | ["sprt"] => vec![0, 1],
         ["spsa"] | ["nps"] | ["engine", "inspect" | "check"] => vec![0],
-        ["spsa", "status" | "history"] | ["status"] | ["stats"] => vec![0],
+        ["spsa", "status" | "history" | "read"] | ["status"] | ["stats"] => vec![0],
         ["book", "slice"] => vec![0, 1],
         ["book", "hash" | "stats" | "verify"] => vec![0],
         ["suite"] => vec![0, 1],
