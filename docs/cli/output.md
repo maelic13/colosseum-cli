@@ -40,7 +40,8 @@ Every game Colosseum writes carries its schedule identity in the PGN header:
 `GameNumber`, `PairNumber`, `PairGame`, `OpeningIndex` where a book supplied
 one, and `OpeningLabel`, beside the standard seven tags and `OpeningPlyCount`.
 It also names the CPU slot the game ran on, `GameSlot`, counting from zero, and
-each side's time margin, `WhiteTimeMarginMs` and `BlackTimeMarginMs`; a forfeit
+each side's time margin, `WhiteTimeMarginMs` and `BlackTimeMarginMs`, and a
+node-budgeted side's budget, `WhiteNodeBudget` and `BlackNodeBudget`; a forfeit
 forensic names the slot too.
 A game the run recorded but did not count — one abandoned on an infrastructure
 fault, or a pair played after a sequential test had already concluded — also
@@ -133,7 +134,14 @@ baseline: 1,190,480 of 1,190,480 moves annotated (100.0%); depth 15.50 mean, 13 
 ```
 
 They are followed by how the counted games ended and the faults and time
-losses, as [`stats`](stats.md) describes them; each search line also gives the depth without mate scores.
+losses, as [`stats`](stats.md) describes them; each search line also gives
+the depth without mate scores, and a side with a node budget gets a line with
+its largest reported node count and its moves over the budget:
+
+```text
+candidate: node budget 50,000: largest 50,000 nodes reported; 0 of 1,190,627 moves over
+```
+
 Only counted games are split by colour; the search figures cover every game in
 `games.pgn`, each counted for the side that played it.
 

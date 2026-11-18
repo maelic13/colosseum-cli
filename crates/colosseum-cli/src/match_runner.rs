@@ -946,6 +946,7 @@ fn synthetic_game(
                 opening_label: opening.label.clone(),
             }),
             time_margins_ms: None,
+            node_budgets: [None, None],
             slot: Some(slot.slot_index),
             forfeited_search: None,
         },

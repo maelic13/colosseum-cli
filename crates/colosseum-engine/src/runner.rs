@@ -1766,6 +1766,12 @@ fn render_pgn(
             u64::try_from(spec.white_time_margin.as_millis()).unwrap_or(u64::MAX),
             u64::try_from(spec.black_time_margin.as_millis()).unwrap_or(u64::MAX),
         ]),
+        node_budgets: [&spec.white_time_control, &spec.black_time_control].map(|control| {
+            match control {
+                TimeControl::Nodes { nodes } => Some(*nodes),
+                _ => None,
+            }
+        }),
         slot: spec.slot,
         forfeited_search,
     };

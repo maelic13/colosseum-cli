@@ -27,6 +27,10 @@ struct FixtureArgs {
     /// a FEN or `startpos`. From a script's start position with N moves
     /// played, the fixture answers with the script's move N + 1.
     script: Option<std::path::PathBuf>,
+    /// The node count a scripted or legal-sequence search reports, whatever
+    /// its `go` allowed: an engine that ignores its node budget. One when
+    /// not given.
+    reported_nodes: Option<u64>,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -63,6 +67,8 @@ fn arguments() -> FixtureArgs {
             parsed.pid_file = Some(value.into());
         } else if let Some(value) = argument.strip_prefix("--script=") {
             parsed.script = Some(value.into());
+        } else if let Some(value) = argument.strip_prefix("--reported-nodes=") {
+            parsed.reported_nodes = Some(value.parse().expect("--reported-nodes needs an integer"));
         } else if let Some(value) = argument.strip_prefix("--log-commands=") {
             parsed.log_commands = Some(value.into());
         } else if let Some(value) = argument.strip_prefix("--uciok-after-ms=") {
@@ -173,11 +179,16 @@ fn main() -> std::io::Result<()> {
                 if let Some(phases) = arguments.phases {
                     write_timed_search(&mut stdout, phases)?;
                 }
+                let nodes = arguments.reported_nodes.unwrap_or(1);
                 if arguments.script.is_some() {
-                    writeln!(stdout, "info depth 1 nodes 1 score cp 0")?;
+                    writeln!(stdout, "info depth 1 nodes {nodes} score cp 0")?;
                     writeln!(stdout, "bestmove {}", scripted_move(&script, &position))?;
                 } else if arguments.legal_sequence {
-                    write_legal_bestmove(&mut stdout, &position, arguments.phases.is_none())?;
+                    write_legal_bestmove(
+                        &mut stdout,
+                        &position,
+                        arguments.phases.is_none().then_some(nodes),
+                    )?;
                 } else {
                     writeln!(stdout, "bestmove e2e4")?;
                 }
@@ -207,10 +218,12 @@ fn write_timed_search(output: &mut impl Write, phases: Phases) -> std::io::Resul
     Ok(())
 }
 
+/// The next move of a fixed legal line, after an `info` reporting `nodes`
+/// when given one.
 fn write_legal_bestmove(
     output: &mut impl Write,
     position: &str,
-    with_info: bool,
+    info_nodes: Option<u64>,
 ) -> std::io::Result<()> {
     let moves = position
         .split_once(" moves ")
@@ -219,8 +232,8 @@ fn write_legal_bestmove(
         .get(moves)
         .copied()
         .unwrap_or("0000");
-    if with_info {
-        writeln!(output, "info depth 1 nodes 1 score cp 0")?;
+    if let Some(nodes) = info_nodes {
+        writeln!(output, "info depth 1 nodes {nodes} score cp 0")?;
     }
     writeln!(output, "bestmove {best}")
 }

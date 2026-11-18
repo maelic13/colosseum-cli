@@ -16,6 +16,11 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   paired score: Elo and nElo with their 95% intervals, and the pentanomial,
   in the words the progress block uses; `run-record.json` and the `--json`
   value carry the same under `results.paired`
+- With a node budget, `results.txt`, `stats` and the telemetry
+  (`node_budget`) give each side's largest reported node count and how many
+  of its moves reported more nodes than its budget, so an engine that
+  overshoots or ignores its budget is visible. The PGN names each budgeted
+  side's budget in `WhiteNodeBudget` / `BlackNodeBudget` tags
 
 ### Fixed
 - A `match` run record's `official_sample` holds the pentanomial and the

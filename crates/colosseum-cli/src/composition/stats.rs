@@ -179,6 +179,9 @@ pub(crate) fn run_stats(command: StatsCommand, machine: bool) -> ExitCode {
                     if let Some(line) = overhead_text(&engine.harness_overhead_ms) {
                         println!("{}: {line}", engine.engine);
                     }
+                    if let Some(budget) = &engine.node_budget {
+                        println!("{}: {}", engine.engine, node_budget_text(budget));
+                    }
                 }
                 if let Some(phases) = &report.game_phases {
                     println!(
@@ -289,8 +292,35 @@ pub(crate) fn run_results_lines(results: &crate::stats_replay::RunResults) -> Ve
             parts.push(format!("{:.2}M nodes per second", nps / 1e6));
         }
         lines.push(format!("{}: {}", engine.engine, parts.join("; ")));
+        if let Some(budget) = &engine.node_budget {
+            lines.push(format!("{}: {}", engine.engine, node_budget_text(budget)));
+        }
     }
     lines
+}
+
+/// A side's moves against its node budget in one line:
+/// `node budget 5,000: largest 5,000 nodes reported; 0 of 120 moves over`.
+pub(crate) fn node_budget_text(metric: &crate::pgn_telemetry::NodeBudgetMetric) -> String {
+    let largest = metric.max_nodes.map_or_else(
+        || "no node count reported".to_owned(),
+        |nodes| {
+            let noun = if nodes == 1 { "node" } else { "nodes" };
+            format!("largest {} {noun} reported", grouped(nodes))
+        },
+    );
+    let unreported = metric.moves_with_budget - metric.reported_moves;
+    let unreported = if unreported > 0 {
+        format!(", {} reported no nodes", grouped(unreported.into()))
+    } else {
+        String::new()
+    };
+    format!(
+        "node budget {}: {largest}; {} of {} moves over{unreported}",
+        grouped(metric.budget),
+        grouped(metric.over_budget.into()),
+        grouped(metric.moves_with_budget.into()),
+    )
 }
 
 /// A two-engine run's paired score in the words its progress and final

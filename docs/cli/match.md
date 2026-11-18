@@ -144,7 +144,9 @@ It is written just before the result as `{forfeit t=<ms>ms h=<ms>ms}` with the
 time its answer finally arrived, together with the usual `s=`, `d=` and `n=`
 fields when the engine reported them, or `{forfeit}` when no answer came. The
 `WhiteTimeMarginMs` and `BlackTimeMarginMs` tags name each side's time margin,
-so a PGN alone says how close each move's overhead came to a forfeit, and
+so a PGN alone says how close each move's overhead came to a forfeit;
+`WhiteNodeBudget` and `BlackNodeBudget` name the node budget of a side with a
+fixed node count, so it says which moves searched past it; and
 `GameSlot` names the CPU slot the game ran on, counting from zero.
 
 The writer form is versioned and every run record names the version it used, so

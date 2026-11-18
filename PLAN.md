@@ -1841,7 +1841,6 @@ leaves the table in the commit that finishes it.
 
 | Step | Waits for |
 |---|---|
-| 12.10 | — |
 | 12.11 | — |
 | 12.12 | — |
 | 12.13 | — |
@@ -2556,13 +2555,23 @@ a finite ETA in `spsa status`.
     covers each source, defaults and chunked parsing. On the old loader the
     CLI test reads `0 1` for all three. The parity matrix plays no book, and
     the oracle replay is the required suite's statistics fixtures.
-  - **12.10 Node-budget compliance in the summary — `I1`.** Rarog request
-    13. With a node budget, `results.txt` and the telemetry give each
-    side's largest reported node count and the number of moves that
-    reported more than that side's budget, so an engine that overshoots or
-    ignores its budget is visible. Tests: a fixture engine that ignores its
-    budget is named with its count of moves over; a compliant run reports
-    none.
+  - **12.10 Node-budget compliance in the summary — `I1`, DONE 2026-11-18.**
+    Rarog request 13. With a node budget, `results.txt` and the telemetry
+    give each side's largest reported node count and the number of moves
+    that reported more than that side's budget, so an engine that overshoots
+    or ignores its budget is visible. Tests: a fixture engine that ignores
+    its budget is named with its count of moves over; a compliant run
+    reports none. Done: the runner writes `WhiteNodeBudget` /
+    `BlackNodeBudget` tags for a side whose control is a node count, and the
+    telemetry holds each post-opening move's `n=` against its own game's
+    budget: `node_budget` (budget, moves under it, moves that reported
+    nodes, largest count, moves over), printed by `results.txt` and `stats`.
+    The fixture's `--reported-nodes` makes a side ignore its budget; the CLI
+    tests play 1,000-node matches where one side reports 5,000 (8 of 8 moves
+    over, named in `results.txt`, the run record and `stats`) and where both
+    comply (none over), and fail on the old code with no `node_budget`; a
+    unit test covers a budget per game, book moves and moves without `n=`.
+    Nothing a game plays changed, so no replay or parity check applies.
   - **12.11 SPSA gradient and gain reads — `R2`, then `I2`.** Basilisk's
     request and the measurement half of Rarog request 9. Both
     projects judge whether a tune still has gradient with their shared

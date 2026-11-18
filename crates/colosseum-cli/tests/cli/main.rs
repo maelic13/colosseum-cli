@@ -19,6 +19,7 @@ mod graceful_stop;
 mod journal_recovery;
 mod match_schedule;
 mod move_counters;
+mod node_budget;
 mod nps;
 mod pgn_annotations;
 mod pgn_replay;

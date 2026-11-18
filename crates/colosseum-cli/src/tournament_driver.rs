@@ -560,6 +560,7 @@ mod tests {
                         opening_plies: 0,
                         identity: Some(identity),
                         time_margins_ms: None,
+                        node_budgets: [None, None],
                         slot: None,
                         forfeited_search: None,
                     },
