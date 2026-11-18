@@ -207,8 +207,8 @@ pub const MOVE_TOLERANCE: f64 = 1e-6;
 
 /// How far `recorded` centres after iteration `iteration` are from the
 /// `derived` ones, at the worst coordinate, in units of that iteration's unit
-/// move `c_k r_k`: zero when the run's own arithmetic wrote them, a last-bit
-/// difference when a runner of another version did.
+/// move `c_k r_k`: zero when the runner's arithmetic wrote them from the
+/// same schedule.
 pub fn worst_move_deviation(
     schedule: SpsaSchedule,
     knobs: &[SpsaKnob],

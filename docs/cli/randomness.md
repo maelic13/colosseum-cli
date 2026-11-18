@@ -13,7 +13,8 @@ SHA-256("colosseum-rng-v1\0" || master-seed-u64-LE || stream-name-UTF-8)
 ```
 
 Stable stream names are `opening-order`, `spsa-perturbations`,
-`bootstrap-resampling`, `position-order`, and `warmup-scheduling`. Adding a new
+`bootstrap-resampling`, `position-order`, `warmup-scheduling`, and
+`spsa-read-null` (the sign re-draws of `spsa read`). Adding a new
 name cannot consume from or shift any existing stream.
 
 The key initializes ChaCha12 at block counter zero with a zero 64-bit stream id.

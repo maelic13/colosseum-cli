@@ -101,6 +101,11 @@ pub(crate) enum SpsaAction {
     /// Print the centre vector after every completed iteration, rebuilt from
     /// the journal without changing the run; works while the tune runs.
     History(SpsaHistoryCommand),
+    /// Read whether the tune still has gradient: each knob's z over a
+    /// window, the familywise and excess lines, the cross-fitted gain with
+    /// its sign-randomised null, a forecast and rails; read-only, safe while
+    /// the tune runs.
+    Read(SpsaReadCommand),
 }
 
 #[derive(Debug, Args)]

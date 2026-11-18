@@ -134,7 +134,10 @@ impl SpsaScheduleArtifact {
                     }
                 })?;
                 let c0 = spec.c_end * c_scale;
-                let a_end = r_end * spec.c_end.powi(2);
+                // `x * x`, not `powi(2)`, whose precision Rust leaves open: an
+                // optimised build folds it to `x * x` and an unoptimised one
+                // can differ in the last bit.
+                let a_end = r_end * (spec.c_end * spec.c_end);
                 let a0 = a_end * a_scale;
                 let knob = SpsaKnob::new(spec.min, spec.max, c0, a0)?;
                 let final_coefficients = schedule.coefficients(iterations - 1, knob)?;
@@ -273,7 +276,10 @@ impl SpsaSchedule {
         let step = f64::from(iteration) + 1.0;
         let c = knob.c0 / step.powf(self.gamma);
         let a = knob.a0 / (self.stability_constant + step).powf(self.alpha);
-        let r = a / c.powi(2);
+        // `c * c`, as an optimised build computes `c.powi(2)`: an unoptimised
+        // one rounds it differently in the last bit, and its moves then
+        // differ from the runs a release runner wrote.
+        let r = a / (c * c);
         let coefficients = SpsaCoefficients { c, a, r };
         coefficients.validate()?;
         Ok(coefficients)

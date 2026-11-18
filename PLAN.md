@@ -1841,7 +1841,6 @@ leaves the table in the commit that finishes it.
 
 | Step | Waits for |
 |---|---|
-| 12.11 | — |
 | 12.12 | — |
 | 12.13 | — |
 | 12.14 | — |
@@ -2572,15 +2571,15 @@ a finite ETA in `spsa status`.
     comply (none over), and fail on the old code with no `node_budget`; a
     unit test covers a budget per game, book moves and moves without `n=`.
     Nothing a game plays changed, so no replay or parity check applies.
-  - **12.11 SPSA gradient and gain reads — `R2`, then `I2`.** Basilisk's
-    request and the measurement half of Rarog request 9. Both
-    projects judge whether a tune still has gradient with their shared
-    `tools/spsa_read.py`, which regenerates the runner's ChaCha12 sign
-    stream and re-derives every move from the schedule, so it depends on
-    the CLI's internals and would break silently if either changed. The
-    runner owns the signs, the schedule and the centres, so it computes
-    the reads. Basilisk asks for the numbers only; Rarog also asks for a
-    verdict and for tunes that stop themselves.
+  - **12.11 SPSA gradient and gain reads — `R2`, then `I2`, DONE
+    2026-11-18.** Basilisk's request and the measurement half of Rarog
+    request 9. Both projects judge whether a tune still has gradient with
+    their shared `tools/spsa_read.py`, which regenerates the runner's
+    ChaCha12 sign stream and re-derives every move from the schedule, so it
+    depends on the CLI's internals and would break silently if either
+    changed. The runner owns the signs, the schedule and the centres, so it
+    computes the reads. Basilisk asks for the numbers only; Rarog also asks
+    for a verdict and for tunes that stop themselves.
 
     Basilisk's request, the measurement: a read-only command, safe while a
     tune runs as `spsa history` is, `spsa read <run-dir> [--from K0]
@@ -2686,6 +2685,31 @@ a finite ETA in `spsa status`.
     sign-randomised runs; a tampered journal or a wrong seed failing
     loudly; the agreement fixtures. 12.13 keeps the reads working on a
     barrier-free tune.
+
+    Done: `spsa read` (schema `colosseum-spsa-read-v1`) computes the read in
+    `colosseum_core::spsa_read` from the run's own replay, signs and
+    coefficients, with `Φ⁻¹` by AS 241 (`inverse_normal_cdf`) and the
+    `spsa-read-null` stream, after comparing the replay with the
+    checkpoint's and `result.json`'s centres. `tools/spsa_read_fixtures.py`
+    exports Basilisk's five recorded tunes (b33, b46, b54, b23 blocks 1 and
+    2) with the reference's figures at two windows each; the agreement test
+    replays every centre exactly and matches every deterministic figure at
+    the reference's rounding, and the null SDs within sampling error (the
+    widest gap is the reference's own draw: its 200-draw estimates bracket
+    the CLI's) and to committed values. Core tests: AS 241 against Python's
+    `NormalDist`, the familywise lines, the forecast floor table, the
+    gradient with zero scores, a planted gradient live and over the line, no
+    gradient quiet, a rail at a bound, `z` variance 1 and the gain's mean 0
+    over 120 seeds, the window and the null seed. CLI tests read a synthetic
+    tune finished, mid-run and over a window, and refuse altered centres
+    (exit 3), a changed journal or seed, and a window past the run (exit 2).
+    The check found that an unoptimised build computed `c.powi(2)` a bit
+    differently from the release runner; `SpsaSchedule::coefficients` and
+    the schedule derivation now write `c * c`, which a release build already
+    computed, so a release runner's moves are unchanged: the five tunes
+    replay bit for bit in both builds. Read on Basilisk's b54 run directory,
+    in 0.9 s, the command reproduces the reference's figures and leaves the
+    directory untouched.
   - **12.12 Moves-per-period time controls — `I2`.** Rarog request 4. Per
     side, N moves in T, repeating, with an optional increment: `go`
     carries `movestogo` with the moves left in the period, the clock is

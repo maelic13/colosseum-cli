@@ -28,6 +28,7 @@ mod run_files;
 mod search_timing;
 mod slot_pool;
 mod spsa;
+mod spsa_read;
 mod status;
 mod stop_boundaries;
 mod threefold;

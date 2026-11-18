@@ -9,8 +9,7 @@ Each block is a finished tune's run directory under --results. Its fixture is
 the run reduced to what a read needs: the schedule artifact as the run wrote
 it, games per iteration, the starting centres, every iteration's score D, and
 the recorded centres every RECORDED_EVERY iterations and at the end, which the
-CLI's re-derived centres must reproduce within the reference's tolerance (a
-runner of another version may round a move differently in its last bit). Beside them are the reference
+CLI's re-derived centres must reproduce exactly. Beside them are the reference
 reader's figures, from `--reference` (the engine projects' spsa_read.py at
 the revision PLAN 12.11 pins), at two reads: the last 1,000 iterations, and
 1,000 iterations ending at the three-quarter point, which has a forecast.

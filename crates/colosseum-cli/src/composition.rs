@@ -82,6 +82,7 @@ mod self_test_command;
 mod shared;
 mod sprt;
 mod spsa;
+mod spsa_read_command;
 mod stats;
 mod status_command;
 mod tournament;
@@ -97,6 +98,7 @@ use self_test_command::*;
 use shared::*;
 use sprt::*;
 use spsa::*;
+use spsa_read_command::*;
 use stats::*;
 use status_command::*;
 use tournament::*;
@@ -233,6 +235,8 @@ pub async fn run() -> ExitCode {
                 }
                 Some(SpsaAction::History(_)) if cli.dry_run => unsupported_dry_run("spsa history"),
                 Some(SpsaAction::History(history)) => run_spsa_history(&history, cli.json),
+                Some(SpsaAction::Read(_)) if cli.dry_run => unsupported_dry_run("spsa read"),
+                Some(SpsaAction::Read(command)) => run_spsa_read(&command, cli.json),
                 None => run_spsa_command(command, cli.json, cli.dry_run, cancellation).await,
             }
         }

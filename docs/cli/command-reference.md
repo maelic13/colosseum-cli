@@ -577,6 +577,7 @@ Commands:
   plan     Report the exact gain schedule and factual workload without launching an engine
   status   Read the last durable tune snapshot and report labelled trajectory heuristics
   history  Print the centre vector after every completed iteration, rebuilt from the journal without changing the run; works while the tune runs
+  read     Read whether the tune still has gradient: each knob's z over a window, the familywise and excess lines, the cross-fitted gain with its sign-randomised null, a forecast and rails; read-only, safe while the tune runs
   help     Print this message or the help of the given subcommand(s)
 
 Arguments:
@@ -593,19 +594,19 @@ Options:
       --run-file <PATH>
           Load reusable command options from an inheritable TOML run file
 
-      --label <LABEL>
-
-
       --unset-run-option <LONG_NAME>
           Remove one inherited run-file option before applying CLI arguments
 
-      --engine-arg <ARGUMENTS>
+      --label <LABEL>
 
 
       --stop-grace-secs <SECONDS>
           Seconds a game in flight may take to finish after an interrupt asks a durable run to stop; a second interrupt abandons it at once
 
           [default: 30]
+
+      --engine-arg <ARGUMENTS>
+
 
       --cwd <CWD>
 
@@ -900,6 +901,75 @@ Options:
           Seconds a game in flight may take to finish after an interrupt asks a durable run to stop; a second interrupt abandons it at once
 
           [default: 30]
+
+  -h, --help
+          Print help
+```
+
+## `colosseum-cli spsa read`
+
+```text
+Read whether the tune still has gradient: each knob's z over a window, the familywise and excess lines, the cross-fitted gain with its sign-randomised null, a forecast and rails; read-only, safe while the tune runs
+
+Usage: colosseum-cli spsa read [OPTIONS] <RUN_DIRECTORY>
+
+Arguments:
+  <RUN_DIRECTORY>
+          Self-contained SPSA run directory to read without mutation
+
+Options:
+      --from <FROM>
+          First iteration of the window. Default: 1,000 before its end, or 0
+
+      --json
+          Emit exactly one JSON value on stdout
+
+      --dry-run
+          Resolve and print configuration/invocations without launching an engine
+
+      --to <TO>
+          One past the window's last iteration. Default: every completed iteration
+
+      --null-reps <NULL_REPS>
+          Sign-randomised re-draws behind each gain read's null SD
+
+          [default: 40]
+
+      --run-file <PATH>
+          Load reusable command options from an inheritable TOML run file
+
+      --null-seed <NULL_SEED>
+          Seed of the re-draws' `spsa-read-null` stream
+
+          [default: 1]
+
+      --unset-run-option <LONG_NAME>
+          Remove one inherited run-file option before applying CLI arguments
+
+      --gain-segment <GAIN_SEGMENT>
+          Iterations per segment of the cross-fitted gain read
+
+          [default: 500]
+
+      --stop-grace-secs <SECONDS>
+          Seconds a game in flight may take to finish after an interrupt asks a durable run to stop; a second interrupt abandons it at once
+
+          [default: 30]
+
+      --forecast-span <FORECAST_SPAN>
+          Iterations the forecast covers after the window; 0 turns it off
+
+          [default: 2000]
+
+      --family-alpha <FAMILY_ALPHA>
+          Family alpha of the familywise line
+
+          [default: 0.05]
+
+      --excess-sd <EXCESS_SD>
+          The excess's line, in units of its null SD
+
+          [default: 2]
 
   -h, --help
           Print help

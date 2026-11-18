@@ -7,6 +7,17 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- `spsa read <run-dir>` reads whether a tune still has gradient, without
+  changing it and while it runs: each knob's `z` over a window (the last
+  1,000 iterations by default), the familywise and excess lines and whether
+  the window is live or quiet, the cross-fitted gain since iteration 0 and in
+  the window with sign-randomised null SDs, an upper-bound forecast, rails
+  and the run's faults; `--json` under schema `colosseum-spsa-read-v1`. It
+  checks the journal's replay against the run's recorded centres first. It
+  relies on the tune's sign stream (`spsa-perturbations`, draw `k × n + i`,
+  odd is `+1`) and gain schedule (`c_k = c0 / (k+1)^0.102`,
+  `a_k = a0 / (A+k+1)^0.601`, a move of `a_k / c_k × D × sign`), which are
+  now a stated contract: a change to either is a versioned break
 - A tune with `--stop-after-iteration` below its total reports how long is
   left to the stop as well as to the end: a `time to stop` line in every
   progress block and its `run.log` entry, and the time to the stop in

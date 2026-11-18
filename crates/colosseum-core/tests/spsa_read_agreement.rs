@@ -5,8 +5,7 @@
 //! `tools/spsa_read_fixtures.py` to its schedule, starting centres and
 //! scores, with the reference's figures at the pinned revision. The centres
 //! are re-derived with the runner's own update and must be the recorded ones
-//! within the reference's tolerance (the runner that played these tunes
-//! rounds one move in a few hundred differently in its last bit); every
+//! exactly, read with exact float parsing as the CLI reads them; every
 //! deterministic figure must agree with the reference at its
 //! rounding; the null SDs, drawn from the CLI's own stream, must agree with
 //! the reference's within sampling error and with the values committed here.
@@ -149,8 +148,8 @@ fn fixture(text: &str) -> Fixture {
         worst = worst.max(deviation);
     }
     assert!(
-        worst <= MOVE_TOLERANCE,
-        "the runner's update does not reproduce the recorded centres: {worst:e} of a unit move"
+        worst == 0.0,
+        "the runner's update does not reproduce the recorded centres: {worst:e} of a unit move (tolerance {MOVE_TOLERANCE:e})"
     );
     Fixture {
         names: artifact
