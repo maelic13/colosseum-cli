@@ -1841,7 +1841,6 @@ leaves the table in the commit that finishes it.
 
 | Step | Waits for |
 |---|---|
-| 12.5 | — |
 | 12.9 | — |
 | 12.10 | — |
 | 12.11 | — |
@@ -2446,13 +2445,22 @@ a finite ETA in `spsa status`.
     the warning and the recorded note.
 - **(c) Findings from the 1.x inventory** (GUIDE 12.5, `I1`), GUI step 1.1,
   2026-09-29; latent, not reported by an adopter.
-  - **12.5 An unparsable start position is refused — `I1`.** The runner falls back
-    to the standard start position when a game's start FEN does not parse,
-    while the engines are still sent that FEN. Books are validated at load,
-    so no run reaches it today; the fallback becomes an error naming the
-    game and the FEN. A test hands the runner an invalid FEN. Taken
-    before 12.9, which changes how a start position is read, so a
-    mistake there is an error, not a game from the standard position.
+  - **12.5 An unparsable start position is refused — `I1`, DONE
+    2026-11-18.** The runner falls back to the standard start position when
+    a game's start FEN does not parse, while the engines are still sent that
+    FEN. Books are validated at load, so no run reaches it today; the
+    fallback becomes an error naming the game and the FEN. A test hands the
+    runner an invalid FEN. Taken before 12.9, which changes how a start
+    position is read, so a mistake there is an error, not a game from the
+    standard position. Done: the runner reads the start position before it
+    starts or reuses an engine; a FEN that does not parse, or parses to an
+    illegal position, ends the game unscorable with the infrastructure fault
+    `start-position` ("game N: the start position `FEN` is not a legal
+    position: …"), so the run stops as an infrastructure error, and kept
+    engines are quit. The engine crate's `start_position` test hands the
+    runner both kinds with absent engine executables and finds that fault,
+    not `engine-spawn`, as the old fallback gave. Nothing that plays a
+    parsable position changed, so no replay or parity check applies.
 - **(d) Requests from the maintainer's engine projects, for CLI 0.6.0**
   (12.6 onward), 2026-11-14. The maintainer takes these before the GUI
   programme continues and releases them as 0.6.0 and the minor releases

@@ -678,6 +678,24 @@ async fn play(
     let game_start = std::time::Instant::now();
     let monotonic_resolution_ns = monotonic_resolution_ns();
 
+    // A start position that does not parse is an error before any engine
+    // starts: the engines would be sent that FEN while the harness judged a
+    // different game.
+    let mut pos = match initial_position(spec.start_fen.as_deref()) {
+        Ok(pos) => pos,
+        Err(message) => {
+            for engine in kept.into_iter().flatten() {
+                engine.quit().await;
+            }
+            let mut report = refused_start(&spec, monotonic_resolution_ns, message);
+            report.stats.duration_ms = Some(game_start.elapsed().as_millis() as u64);
+            if let Ok(mut lg) = live.lock() {
+                lg.finished = Some((report.result, report.termination));
+            }
+            return (report, [None, None]);
+        }
+    };
+
     // Both engines are spawned, handshaken and configured at once: an old
     // engine's slow start no longer delays the other's, and neither side's
     // setup waits in line. Each side keeps its own outcome, so a failure's
@@ -701,7 +719,6 @@ async fn play(
         }
     };
 
-    let mut pos = initial_position(spec.start_fen.as_deref());
     let mut clocks = Clocks::new(&spec.white_time_control, &spec.black_time_control);
 
     let mut san_moves: Vec<String> = Vec::new();
@@ -1509,14 +1526,48 @@ fn build_uci_position(start_fen: Option<&str>, moves: &[String]) -> UciPosition 
     }
 }
 
-fn initial_position(start_fen: Option<&str>) -> Chess {
-    match start_fen {
-        None => Chess::default(),
-        Some(fen) => fen
-            .parse::<shakmaty::fen::Fen>()
-            .ok()
-            .and_then(|f| f.into_position(CastlingMode::Standard).ok())
-            .unwrap_or_default(),
+/// The position a game starts from, or why its FEN is not one.
+fn initial_position(start_fen: Option<&str>) -> Result<Chess, String> {
+    let Some(fen) = start_fen else {
+        return Ok(Chess::default());
+    };
+    fen.parse::<shakmaty::fen::Fen>()
+        .map_err(|error| error.to_string())
+        .and_then(|parsed| {
+            parsed
+                .into_position(CastlingMode::Standard)
+                .map_err(|error| error.to_string())
+        })
+        .map_err(|error| format!("the start position `{fen}` is not a legal position: {error}"))
+}
+
+/// The report of a game refused before its engines started: its start
+/// position does not parse. Unscorable, and an infrastructure fault naming
+/// the game and the FEN, so the run stops rather than counting it.
+fn refused_start(spec: &GameSpec, monotonic_resolution_ns: u64, message: String) -> GameReport {
+    let message = format!("game {}: {message}", spec.round);
+    let outcome = Outcome::infrastructure("start-position", message);
+    GameReport {
+        game_id: spec.game_id,
+        white: spec.white.id,
+        black: spec.black.id,
+        result: outcome.result,
+        scorable: outcome.scorable,
+        termination: outcome.termination,
+        stats: GameStats::default(),
+        san_moves: Vec::new(),
+        uci_moves: Vec::new(),
+        pgn: render_pgn(spec, &[], &[], outcome.result, outcome.termination, None),
+        clock_accounting: clock_accounting_report(
+            spec,
+            monotonic_resolution_ns,
+            None,
+            None,
+            None,
+            None,
+        ),
+        fault: outcome.fault,
+        error: outcome.error,
     }
 }
 

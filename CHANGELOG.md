@@ -12,7 +12,6 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   progress block and its `run.log` entry, and the time to the stop in
   `spsa status` (`eta.stop_point` in JSON). Both come from the same
   observed rate; a resume with a new stop reports the new one
-
 - `results.txt` of a `match`, `sprt` or `calibrate` run starts with its
   paired score: Elo and nElo with their 95% intervals, and the pentanomial,
   in the words the progress block uses; `run-record.json` and the `--json`
@@ -25,6 +24,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   own increment: `winc` comes from White's control and `binc` from
   Black's. Before, the engine to move was sent its own increment as both.
   Games where both sides have the same clock are unchanged
+- A game whose start position does not parse is refused with an error
+  naming the game and the FEN, and the run stops; it was played from the
+  standard position while the engines were sent the FEN. Books are checked
+  when they load, so no run is known to have reached it
 
 ### Changed
 - Colosseum CLI has its own repository,
