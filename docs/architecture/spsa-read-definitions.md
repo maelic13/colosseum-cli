@@ -168,10 +168,11 @@ live or quiet, rail or forecast. A project keeps those in its wrapper, reads
   `tools/spsa_read_fixtures.py` from Basilisk's run directories (each
   block's schedule, seed, starting centres, games per iteration, every
   iteration's `D`, and the recorded centres every 100 iterations, which the
-  CLI's re-derived centres must reproduce exactly), with the reference's
-  figures at the pinned revision. A test reads them and matches every
-  figure to the reference's rounding, reaches the reference's verdicts by
-  applying its lines to the figures, and matches the null SDs within the
+  CLI's re-derived centres must reproduce to within `1e-9` of a unit move,
+  the last bit another platform's `powf` may round differently), with the
+  reference's figures at the pinned revision. A test reads them and matches
+  every figure to the reference's rounding, reaches the reference's verdicts
+  by applying its lines to the figures, and matches the null SDs within the
   stated sampling error as well as to the CLI's own committed values.
 - **Synthetic runs**: a planted gradient past the familywise line, none
   under it, `z`'s variance about 1 over many seeds, the gain read's mean

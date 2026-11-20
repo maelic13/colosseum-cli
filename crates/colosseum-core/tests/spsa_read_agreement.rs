@@ -5,7 +5,8 @@
 //! `tools/spsa_read_fixtures.py` to its schedule, starting centres and
 //! scores, with the reference's figures at the pinned revision. The centres
 //! are re-derived with the runner's own update and must be the recorded ones
-//! exactly, read with exact float parsing as the CLI reads them; every
+//! to within [`REPLAY_TOLERANCE`], read with exact float parsing as the CLI
+//! reads them; every
 //! deterministic figure must agree with the reference at its
 //! rounding; the null SDs, drawn from the CLI's own stream, must agree with
 //! the reference's within sampling error and with the values committed here.
@@ -15,6 +16,14 @@ use colosseum_core::spsa_read::{
 };
 use colosseum_core::{SpsaKnob, SpsaScheduleArtifact, prepare_iteration, update_centers};
 use serde_json::Value;
+
+/// How far, in unit moves, the re-derived centres may be from the recorded
+/// ones. The tunes were played on Windows; another platform's `powf` may
+/// round a schedule coefficient differently in its last bit, which moves a
+/// centre by about `1e-14` of a unit move. A misread score or sign moves it by
+/// a whole one. The CLI's own integrity check allows `MOVE_TOLERANCE`, 1,000
+/// times this.
+const REPLAY_TOLERANCE: f64 = 1e-9;
 
 const FIXTURES: [(&str, &str); 5] = [
     (
@@ -148,8 +157,8 @@ fn fixture(text: &str) -> Fixture {
         worst = worst.max(deviation);
     }
     assert!(
-        worst == 0.0,
-        "the runner's update does not reproduce the recorded centres: {worst:e} of a unit move (tolerance {MOVE_TOLERANCE:e})"
+        worst <= REPLAY_TOLERANCE,
+        "the runner's update does not reproduce the recorded centres: {worst:e} of a unit move (tolerance {REPLAY_TOLERANCE:e}; the CLI's own check allows {MOVE_TOLERANCE:e})"
     );
     Fixture {
         names: artifact
