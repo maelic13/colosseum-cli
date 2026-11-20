@@ -48,7 +48,7 @@ module names in those two baseline documents therefore remain factual.
 
 The source-file stems under each `crates/*/src` directory were compared with
 the exact per-package tables under “Current-module migration map” in
-[`target-architecture.md`](target-architecture.md):
+`target-architecture.md` (in the repository's history at `56cbd00`):
 
 | Current package | Source modules | Target rows | Missing | Duplicate/extra |
 |---|---:|---:|---|---|

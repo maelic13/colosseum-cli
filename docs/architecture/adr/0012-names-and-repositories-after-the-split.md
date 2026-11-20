@@ -13,7 +13,7 @@
   names are retained unchanged
 - **Relates to:** PLAN §Phase 11 (step 11.1, milestone M0) and §Phase 14;
   [ADR-0011](0011-desktop-application-as-separate-cli-client.md);
-  [naming research](../naming-decision.md)
+  naming research (`naming-decision.md`, in the repository's history at `56cbd00`)
 
 ## Revision 2026-11-14: the swap at the split
 

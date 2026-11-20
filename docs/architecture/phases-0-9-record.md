@@ -10,14 +10,14 @@ No CLI implementation begins until the boundary it will depend on is understood
 and recorded.
 
 **Progress:** Steps 0.1 through 0.8 are complete. The
-[`dependency inventory`](../architecture/dependency-inventory.md) records all
+`dependency inventory` (`dependency-inventory.md`, in the repository's history at `56cbd00`) records all
 workspace packages, internal Cargo edges, source modules, principal source
 imports, test targets and current build/release targets. The
-[`current-state analysis`](../architecture/current-state.md) classifies
+`current-state analysis` (`current-state.md`, in the repository's history at `56cbd00`) classifies
 responsibilities, public boundaries, side effects, globals, error/cancellation
 behavior, tests and release coupling; findings CS-01 through CS-12 account for
 every S4 gap. The
-[`target architecture`](../architecture/target-architecture.md) assigns every
+`target architecture` (`target-architecture.md`, in the repository's history at `56cbd00`) assigns every
 current module and consequential public boundary, defines the application
 use cases and inward-facing ports, separates GUI library data from
 `EngineLaunchSpec`, and specifies composition, durability, failure/cancellation
@@ -25,11 +25,11 @@ flow and the smallest safe migration. The accepted
 [`architecture decisions`](../architecture/adr/README.md) bind the package
 graph, minimal launch specification, runtime-neutral port and authoritative
 commit boundary, GUI-library mapping and incremental migration. The
-[`release architecture`](../architecture/release-architecture.md) and
+`release architecture` (`release-architecture.md`, in the repository's history at `56cbd00`) and
 [ADR-0006](../architecture/adr/0006-one-repository-independent-product-releases.md)
 keep one repository while separating GUI/CLI versions, tags, notes, artifacts
 and workflows, with required shared-layer CI. The
-Phase 0.6 [`naming research`](../architecture/naming-decision.md) and rejected
+Phase 0.6 `naming research` (`naming-decision.md`, in the repository's history at `56cbd00`) and rejected
 [ADR-0007](../architecture/adr/0007-name-the-cli-uci-rig.md) preserve the
 real collision evidence and rejected UCI Rig proposal. The
 [`integrated review`](../architecture/phase-0-review.md) demonstrates complete

@@ -5,10 +5,11 @@ UCI chess engines. GPL-3.0. The primary development machine is Windows.
 Releases are plain `vX.Y.Z` tags.
 
 The desktop application, Colosseum, is a separate product in its own
-repository, `maelic13/colosseum` (local checkout `D:\code\colosseum`), and
-drives this CLI through its process protocol (ADR-0011, ADR-0012). The 1.x
-egui application, which once lived here, is maintained there in `legacy/`
-until 2.0; nothing of it remains in this repository.
+repository, `maelic13/colosseum` (local checkout `D:\code\colosseum`). Its
+plan to drive this CLI through a process protocol (ADR-0011, ADR-0012) is
+`PLAN_GUI.md`, under revision. The 1.x egui application, which once lived
+here, is maintained there in `legacy/`; nothing of it remains in this
+repository.
 
 ## Workspace
 
@@ -25,8 +26,9 @@ its own pull request. Commands: `cargo check --workspace --tests`, `cargo clippy
 --all-targets -- -D warnings`, `cargo test --workspace --all-targets`; run the
 CLI with `cargo run -p colosseum-cli -- --help`; builds and archives through
 `cargo xtask build|package cli`. Before implementation work, read `AGENTS.md`,
-`PLAN.md` and `GUIDE.md`. `PLAN.md` and `GUIDE.md` are the maintainer-facing
-specification/tracker; `README.md`, `packaging/cli/README.md`, `docs/cli/` and
+`PLAN.md` and `GUIDE.md` (and `PLAN_GUI.md`, `GUIDE_GUI.md` for the desktop
+programme). `PLAN.md` and `GUIDE.md` are the maintainer-facing requests plan
+and tracker; `README.md`, `packaging/cli/README.md`, `docs/cli/` and
 `CHANGELOG.md` are **user-facing** (keep them simple, no phase/internal-
 method detail); `docs/DEVELOPMENT.md` holds implemented build, test, workspace
 and release facts.
@@ -50,17 +52,20 @@ counted, never folded into a score.
 ## Conventions that matter (learned the hard way)
 
 - **Engine identity is "name version"** (e.g. `Basilisk 1.7.0`) wherever a
-  single string names an engine — the desktop application keeps name and
-  version apart in its library and passes the joined string as the label.
+  single string names an engine; a client that keeps name and version
+  apart passes the joined string as the label.
 - **Ratings are always a joint ML recompute** (`ml_ratings`, Ordo-style,
   anchored to the participants' starting mean unless pinned) from the
   standings — never incremental K-factor Elo. Every engine carries
   `PRIOR_WEIGHT` virtual draws against its own prior (Bayesian damping — one
   win must not produce a capped ±400 split). Error bars via `rating_error`
-  (Fisher information). The CLI computes; the desktop application keeps the
-  engine library, passes library ratings as starting ratings, pins what must
-  not move, and writes the CLI's figures back (PLAN, maintainer requirements,
-  2026-09-29).
+  (Fisher information). The CLI computes; a client passes starting ratings,
+  pins what must not move, and keeps the CLI's figures (`PLAN_GUI.md` §G1,
+  ratings, 2026-09-29).
+- **Numbers, not verdicts** (PLAN §S3, 2026-11-20): the CLI reports figures
+  and their definitions; a project applies its own thresholds. A request
+  for one project's threshold or verdict is refused, with the figures it
+  needs offered instead.
 - **UCI option mapping is allowlist-based**: thread/hash options are matched
   by exact (whitespace/case-insensitive) names (`is_thread_option`,
   `is_hash_option`) — substring heuristics corrupted options like Rybka's
@@ -92,9 +97,11 @@ oracle replay and parity checks (`GUIDE.md`, recurring procedures).
 
 ## Implementation and commits
 
-Numbered steps are implemented in PLAN §S8's order of work (GUIDE's board,
-generated from PLAN by `python tools/guide_board.py`), with the phase exit
-demonstrated before proceeding. Complete one numbered step—including tests,
+Steps are implemented in their plan's order of work (the boards in
+`GUIDE.md` and `GUIDE_GUI.md`, generated from `PLAN.md` and `PLAN_GUI.md` by
+`python tools/guide_board.py`), with the step's exit criterion demonstrated
+before proceeding. The requests plan numbers its steps (1, 2, …) and the
+GUI plan letters them (A, B, …). Complete one step—including tests,
 documentation and status evidence—then commit it before starting the next.
 Use a short imperative subject naming the outcome, preferably including the
 step identifier. Never add `Co-authored-by` or assistant-attribution trailers.

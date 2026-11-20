@@ -2,21 +2,29 @@
 
 Read this file, [`CLAUDE.md`](CLAUDE.md), [`PLAN.md`](PLAN.md), and
 [`GUIDE.md`](GUIDE.md) before implementation work. `CLAUDE.md` describes the
-existing application and conventions; `PLAN.md` is the binding CLI
-specification and the source of every step; `GUIDE.md` is the ordered
-implementation tracker, its board generated from `PLAN.md`.
+existing application and conventions; `PLAN.md`, the requests plan, is the
+binding CLI specification and the source of every numbered step; `GUIDE.md`
+is its ordered tracker, its board generated from `PLAN.md`. The desktop
+application's programme is the separate pair [`PLAN_GUI.md`](PLAN_GUI.md)
+and [`GUIDE_GUI.md`](GUIDE_GUI.md), with lettered steps; read them for work
+on it.
 
 ## Scope and architecture
 
-- Implement numbered steps in PLAN §S8's order of work (the board's Now
-  first). Do not skip a phase exit.
-- The evidence of completed phases lives under `docs/architecture/` (exit
-  documents, ADRs, the Phase 0–9 and Phase 10 records). Do not re-derive or
-  re-litigate what they record; extend them when a step adds evidence.
+- Implement steps in their plan's order of work (the board's Now first).
+  Do not skip a step's exit criterion.
+- The evidence of completed work lives under `docs/architecture/` (exit
+  documents, ADRs, the Phase 0–9, Phase 10 and requests records). Do not
+  re-derive or re-litigate what they record; extend them when a step adds
+  evidence.
+- The CLI measures and reports; a project applies its own thresholds
+  (PLAN §S3, *Numbers, not verdicts*). Do not add a threshold or verdict
+  that belongs to one project; offer the figures it needs.
 - Dependencies point inward: domain → nothing outward; application use cases →
   domain and ports; adapters/drivers implement ports. The CLI is the one
   composition root; the desktop application lives in its own repository and
-  reaches the CLI only through its process protocol (ADR-0011).
+  would reach the CLI only through the process protocol of `PLAN_GUI.md`
+  (ADR-0011).
 - Preserve working UCI, runner, persistence, and compatibility behaviour.
   Prefer the smallest boundary refactor that satisfies the target architecture.
 - The CLI accepts ordinary UCI executables. Do not add engine manifests, custom
@@ -31,7 +39,7 @@ implementation tracker, its board generated from `PLAN.md`.
 
 ## Step and commit discipline
 
-One numbered `GUIDE.md` item is the normal unit of work.
+One step of a plan is the normal unit of work.
 
 Agents work locally only: create the required commits, but never push, fetch,
 create tags, releases or pull requests, or perform other remote operations.
@@ -69,9 +77,8 @@ The maintainer owns every remote operation.
   `[Unreleased]` in the commit that makes it, written for users. A release
   only dates that section.
 
-Each step's head in `PLAN.md` records its capability class (`R3`, `R2`,
-`I2`, `I1`, `M`, `V`), which GUIDE's generated board shows and §S8's class
-table repeats; `GUIDE.md`'s
+Each step's head in its plan records its capability class (`R3`, `R2`,
+`I2`, `I1`, `M`, `V`), which the generated board shows; `GUIDE.md`'s
 "Current model mapping" table is the single maintainer-edited source that
 maps a class to the current Claude model and thinking mode. Whenever
 reporting the next step, name it with its class and recommend the mapped
@@ -79,8 +86,7 @@ model and mode as `Claude: <model> — <mode>` with a brief task-specific
 reason; do not substitute newer models, and never change the active model
 automatically. If an `I1`, `M` or `V` step exposes a material design choice
 not settled by the plan, stop and continue it as `R2` rather than inventing
-the contract; never silently downgrade a recorded class. Keep the head
-and §S8's table in step.
+the contract; never silently downgrade a recorded class.
 
 1. Start from a clean worktree, or identify and preserve pre-existing user
    changes. Never stage unrelated files.
@@ -90,9 +96,9 @@ and §S8's table in step.
    checks from `CLAUDE.md`.
 4. Demonstrate the exit criterion. A compiling change is not automatically
    complete.
-5. In the same change, mark the finished step's PLAN head `DONE <date>`
-   (or its other outcome), remove its row from §S8 *Order of work*, add the
-   evidence to the step's PLAN text, and regenerate GUIDE's board with
+5. In the same change, mark the finished step's head `DONE <date>` (or
+   its other outcome), remove its row from its plan's *Order of work*, add
+   the evidence to the step's text, and regenerate the boards with
    `python tools/guide_board.py` (*Documentation ownership* below).
 6. Commit the completed step before starting another numbered step.
 
@@ -100,7 +106,7 @@ Use a short imperative commit subject that names the outcome, preferably with
 the step identifier, for example:
 
 ```text
-Phase 1.2: implement pentanomial variance
+Send movestogo for moves-per-period controls (step 4)
 ```
 
 Do not:
@@ -139,30 +145,33 @@ consistency validation; they do not require rerunning unchanged Rust tests.
 
 ## Documentation ownership
 
-- `PLAN.md` and `GUIDE.md`: maintainer-facing specification and tracker.
-  `PLAN.md` carries the binding specifications and only the open work;
-  a completed phase is a `— CLOSED` heading in `PLAN.md` over a
-  one-paragraph summary, which the board shows, and a record file under
-  `docs/architecture/`.
-- GUIDE's board is generated from `PLAN.md` by `python
+- `PLAN.md` and `GUIDE.md`: the requests plan — the binding
+  specification and the numbered steps — and its tracker. `PLAN_GUI.md`
+  and `GUIDE_GUI.md`: the desktop application's programme and its tracker,
+  with lettered steps. All four are maintainer-facing. A plan carries its
+  specification and open work; finished work is summarised in a `— CLOSED`
+  group, which the board shows, and recorded under `docs/architecture/`.
+- Each guide's board is generated from its plan by `python
   tools/guide_board.py`; never edit it by hand, and run `python
   tools/guide_board.py --check`, which CI runs too, rather than reading
-  it. A phase is a `### Phase N — <name>` heading. A step head is a list
-  item whose bold run reads ``**<ID> <title> — <field>.**``, wrapped if
-  need be: `<ID>` is `N.M` or `N.M.K` under Phase `N` and is never reused
-  or renumbered once work on it has started (insert with a dotted suffix,
-  `12.9.1` after `12.9`); the title is what the board shows; the field
-  names the classes in backticks ("`R2`, then `I2`" for a two-part step)
-  and may say EXIT, IN PROGRESS, or an outcome — DONE, REJECTED,
-  DEFERRED, PARKED, FIXED or CLOSED — with an optional date. §S8 *Order of
+  it. A plan's steps live in the level-2 section that holds its `### Order
+  of work`; every other level-3 heading there is a group, and a group
+  whose heading ends `— CLOSED` shows its first paragraph instead of steps.
+  A step head is a list item whose bold run reads
+  ``**<ID> <title> — <field>.**``, wrapped if need be. `PLAN.md` numbers its
+  steps (`4`, a sub-step `4.1`) and `PLAN_GUI.md` letters them (`C`, a
+  sub-step `C.1`); a step keeps its ID once given, done or refused, and a
+  new request takes the next number. The title is what the board shows; the
+  field names the classes in backticks ("`R2`, then `I2`" for a two-part
+  step) and may say EXIT, IN PROGRESS, or an outcome — DONE, REJECTED,
+  DEFERRED, PARKED, FIXED or CLOSED — with an optional date. *Order of
   work* lists the open steps in the order they are taken, one `| <ID> |
   <waits for> |` row each, and its first row is the board's Now. Requests
   that overlap are one step, with their open questions settled with the
-  maintainer before its code. A finished phase's heading gains `— CLOSED
-  <date>` over the one-paragraph summary the board shows, and its text
-  moves to a record under `docs/architecture/`.
+  maintainer before its code; a request for one project's threshold or
+  verdict is refused as a step that keeps its number.
 - `README.md`, `packaging/cli/README.md` (staged as the CLI archive's `README.md`) and
-  `docs/cli/`: user-facing; no phase numbers or internal method
+  `docs/cli/`: user-facing; no step numbers or internal method
   argumentation.
 - `docs/DEVELOPMENT.md`: implemented build/test/release facts; update it when
   the workspace or release process actually changes, not merely when planned.

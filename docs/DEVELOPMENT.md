@@ -345,9 +345,11 @@ to `docs/cli/README.md`; release notes link to the tagged online copy.
 
 ## Maintainer documents
 
-`GUIDE.md`'s board is generated from `PLAN.md`'s step heads and its order of
-work, by a Python script on the standard library (new tools are Python, so
-they run on every platform):
+Two plans each have a guide whose board is generated from the plan's step
+heads and its order of work: `GUIDE.md` from `PLAN.md`, the requests plan,
+and `GUIDE_GUI.md` from `PLAN_GUI.md`, the desktop application's programme.
+One Python script on the standard library writes both (new tools are
+Python, so they run on every platform):
 
 ```bash
 python tools/guide_board.py
@@ -355,7 +357,7 @@ python tools/guide_board.py --check
 python tools/guide_board.py --self-test
 ```
 
-The first rewrites the board between its markers; the second is the
-read-only CI drift gate (`ci.yml` runs it with `python3`), and the third
-tests the generator itself. Edit `PLAN.md`, never the board. The grammar it
-reads is in `AGENTS.md` *Documentation ownership*.
+The first rewrites both boards between their markers; the second is the
+read-only CI drift gate for both (`ci.yml` runs it with `python3`), and the
+third tests the generator itself. Edit the plan, never a board. The grammar
+it reads is in `AGENTS.md` *Documentation ownership*.

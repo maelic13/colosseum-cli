@@ -37,7 +37,7 @@ Do not publish or document `colosseum-cli`, `colosseumcli`, `colosseum-lab` or
 
 The research evidence, preliminary trademark limitations and pre-release
 revalidation rule are in
-[`naming-decision.md`](../naming-decision.md).
+`naming-decision.md` (in the repository's history at `56cbd00`).
 
 ## Proposed consequences (not applied)
 

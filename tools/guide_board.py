@@ -1,36 +1,39 @@
 #!/usr/bin/env python3
-"""Generate GUIDE.md's board from PLAN.md.
+"""Generate each guide's board from its plan: GUIDE.md from PLAN.md, and
+GUIDE_GUI.md from PLAN_GUI.md.
 
-PLAN.md's step heads are the only place a step's title, class and status are
-written; the board in GUIDE.md is generated from them, so the two cannot
+A plan's step heads are the only place a step's title, class and status are
+written; the board in its guide is generated from them, so the two cannot
 disagree. The design and the board's format are Rarog's
-`tools/diag/guide_board.py`, adapted to this repository's numbering.
+`tools/diag/guide_board.py`, adapted to this repository.
 
-What PLAN must look like (the grammar this reads):
+What a plan must look like (the grammar this reads):
 
-- a phase is a level-3 heading `### Phase N — <name>` (`N` a number, or
-  `4A` for an old lettered phase). Any other level-2 or level-3 heading ends
-  it. A finished phase's heading ends `— CLOSED` (with an optional date) and
-  its first paragraph is the summary the board shows instead of steps;
+- its steps live in one level-2 section, the one holding the level-3
+  `### Order of work`. Every other level-3 heading in that section is a
+  group. A group whose heading ends `— CLOSED` (with an optional date) shows
+  its first paragraph on the board instead of steps; a group holding step
+  heads shows them; any other group is not shown;
 - a step head is a list item, at any indent, whose bold run reads
-  `**<ID> <title> — <field>.**`, possibly wrapped over several lines. The ID
-  is `N.M` or `N.M.K`, with `N` its phase's number. The title is what the
+  `**<ID> <title> — <field>.**`, possibly wrapped over several lines. PLAN.md
+  numbers its steps (`7`, a sub-step `7.1`); PLAN_GUI.md letters them (`C`,
+  a sub-step `C.1`). A sub-step follows its parent. The title is what the
   board shows. The field names the step's capability classes in backticks
   (`R3`, `R2`, `I2`, `I1`, `M`, `V`; "`R2`, then `I2`" for a step taken in
   two parts) and may say EXIT, IN PROGRESS, or one of DONE, REJECTED,
   DEFERRED, PARKED, FIXED, CLOSED with an optional date, which resolves it;
-- the `### Order of work` section's table lists open steps in the order they
-  are taken, one `| <ID> | <waits for> |` row each. Its first row is the
+- the `### Order of work` table lists open steps in the order they are
+  taken, one `| <ID> | <waits for> |` row each. Its first row is the
   board's Now; every row names an open step.
 
-The board sits first in GUIDE.md, between BEGIN and END below. Each phase is
-a level-2 heading and each step a task-list item, `- [x]` with its outcome or
-`- [ ]` with its classes in bold; a sub-step is indented four spaces.
-Everything outside the markers is hand-kept.
+The board sits first in the guide, between its BEGIN and END markers. Each
+group is a level-2 heading and each step a task-list item, `- [x]` with its
+outcome or `- [ ]` with its classes in bold; a sub-step is indented four
+spaces. Everything outside the markers is hand-kept.
 
 Usage:
-  python tools/guide_board.py            # rewrite GUIDE's board in place
-  python tools/guide_board.py --check    # exit 1 if GUIDE's board is stale
+  python tools/guide_board.py            # rewrite both boards in place
+  python tools/guide_board.py --check    # exit 1 if either board is stale
   python tools/guide_board.py --self-test
 """
 
@@ -40,43 +43,50 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-GUIDE = ROOT / "GUIDE.md"
-PLAN = ROOT / "PLAN.md"
 
-BEGIN = ("<!-- board: generated from PLAN.md by `python tools/guide_board.py`; "
-         "edit PLAN, never this block -->")
+NUMBERED = r"\d+(?:\.\d+)?"
+LETTERED = r"[A-Z](?:\.\d+)?"
+# (plan, guide, step-ID pattern)
+PAIRS = (
+    ("PLAN.md", "GUIDE.md", NUMBERED),
+    ("PLAN_GUI.md", "GUIDE_GUI.md", LETTERED),
+)
+
 END = "<!-- end of generated board -->"
-
-PHASE = re.compile(r"^### Phase (\d+[A-Z]?) — (.+)$")
-HEADING = re.compile(r"^#{2,3} ")
-STEP = re.compile(r"^ *- \*\*(\d+\.\d+(?:\.\d+)?) ")
+LEVEL2 = re.compile(r"^## ")
+LEVEL3 = re.compile(r"^### (.+)$")
+CLOSED = re.compile(r"— CLOSED(?: \d{4}-\d{2}-\d{2})?$")
 CLASS = re.compile(r"`(R3|R2|I2|I1|M|V)`")
 RESOLVED = re.compile(
     r"\b(DONE|REJECTED|DEFERRED|PARKED|FIXED|CLOSED)\b(?: (\d{4}-\d{2}-\d{2}))?")
 IN_PROGRESS = re.compile(r"\bIN PROGRESS\b")
 EXIT = re.compile(r"\bEXIT\b")
 ORDER_HEADING = "### Order of work"
-ORDER_ROW = re.compile(r"^\|\s*(\d+\.\d+(?:\.\d+)?)\s*\|\s*(.*?)\s*\|\s*$")
 
 
 class PlanError(Exception):
-    """PLAN does not follow the grammar the board is generated from."""
+    """A plan does not follow the grammar its board is generated from."""
 
 
-def _bold_run(lines, i):
+def begin_marker(plan_name):
+    return ("<!-- board: generated from %s by `python tools/guide_board.py`; "
+            "edit %s, never this block -->" % (plan_name, plan_name))
+
+
+def _bold_run(lines, i, plan_name):
     """The text of the bold run that opens on line i, joined across wraps."""
     joined = lines[i]
     j = i
     while joined.count("**") < 2:
         j += 1
         if j >= len(lines) or not lines[j].strip():
-            raise PlanError("PLAN.md:%d: step head's bold run never closes" % (i + 1))
+            raise PlanError("%s:%d: step head's bold run never closes" % (plan_name, i + 1))
         joined += " " + lines[j].strip()
     start = joined.index("**") + 2
     return joined[start:joined.index("**", start)]
 
 
-def _summary(lines, i):
+def _summary(lines, i, plan_name):
     para = []
     for line in lines[i + 1:]:
         if not line.strip():
@@ -87,51 +97,64 @@ def _summary(lines, i):
             break
         para.append(line.rstrip())
     if not para:
-        raise PlanError("%s has no summary paragraph" % lines[i])
+        raise PlanError("%s: %s has no summary paragraph" % (plan_name, lines[i]))
     return "\n".join(para)
 
 
-def parse_plan(plan_text):
-    """The phases in PLAN order, each with its steps.
+def _steps_section(lines, plan_name):
+    """The line range [a, b) of the level-2 section holding the order of work."""
+    if lines.count(ORDER_HEADING) != 1:
+        raise PlanError("%s must hold exactly one '%s' section" % (plan_name, ORDER_HEADING))
+    order = lines.index(ORDER_HEADING)
+    a = max((i for i in range(order) if LEVEL2.match(lines[i])), default=0)
+    b = next((i for i in range(order, len(lines)) if LEVEL2.match(lines[i])), len(lines))
+    return a, b
+
+
+def parse_plan(plan_text, id_pattern, plan_name="PLAN"):
+    """The groups in plan order, each with its steps.
 
     A step is a dict: id, title, classes (list), resolved (e.g. 'DONE
     2026-11-14' or None), in_progress, exit.
     """
     lines = plan_text.split("\n")
-    phases = []
+    a, b = _steps_section(lines, plan_name)
+    step = re.compile(r"^ *- \*\*(%s) " % id_pattern)
+    groups = []
     current = None
     seen = set()
-    for i, line in enumerate(lines):
-        phase = PHASE.match(line)
-        if phase:
-            closed = "— CLOSED" in line
-            current = {"number": phase.group(1), "heading": line, "steps": [],
-                       "closed": closed, "summary": _summary(lines, i) if closed else None}
-            phases.append(current)
-            continue
-        if HEADING.match(line):
+    for i in range(a, b):
+        line = lines[i]
+        heading = LEVEL3.match(line)
+        if heading:
             current = None
+            if line == ORDER_HEADING:
+                continue
+            closed = bool(CLOSED.search(line))
+            current = {"heading": heading.group(1), "steps": [], "closed": closed,
+                       "summary": _summary(lines, i, plan_name) if closed else None}
+            groups.append(current)
             continue
         if current is None or current["closed"]:
             continue
-        m = STEP.match(line)
+        m = step.match(line)
         if not m:
             continue
         sid = m.group(1)
-        if sid.split(".")[0] != current["number"]:
-            raise PlanError("PLAN.md:%d: step %s under Phase %s"
-                            % (i + 1, sid, current["number"]))
         if sid in seen:
-            raise PlanError("PLAN.md:%d: step %s defined twice" % (i + 1, sid))
+            raise PlanError("%s:%d: step %s defined twice" % (plan_name, i + 1, sid))
+        if "." in sid and sid.split(".")[0] not in seen:
+            raise PlanError("%s:%d: sub-step %s has no step %s before it"
+                            % (plan_name, i + 1, sid, sid.split(".")[0]))
         seen.add(sid)
-        rest = _bold_run(lines, i)[len(sid) + 1:]
+        rest = _bold_run(lines, i, plan_name)[len(sid) + 1:]
         if " — " not in rest:
-            raise PlanError("PLAN.md:%d: step %s head lacks ' — <class>'" % (i + 1, sid))
+            raise PlanError("%s:%d: step %s head lacks ' — <class>'" % (plan_name, i + 1, sid))
         title, field = rest.split(" — ", 1)
         classes = CLASS.findall(field)
         if not classes:
-            raise PlanError("PLAN.md:%d: step %s head names no capability class"
-                            % (i + 1, sid))
+            raise PlanError("%s:%d: step %s head names no capability class"
+                            % (plan_name, i + 1, sid))
         resolved = RESOLVED.search(field)
         current["steps"].append({
             "id": sid,
@@ -141,19 +164,19 @@ def parse_plan(plan_text):
             "in_progress": bool(IN_PROGRESS.search(field)),
             "exit": bool(EXIT.search(field)),
         })
-    return phases
+    return [g for g in groups if g["closed"] or g["steps"]]
 
 
-def parse_order(plan_text):
+def parse_order(plan_text, id_pattern, plan_name="PLAN"):
     """The Order of work rows, in order: (id, waits for or None)."""
     lines = plan_text.split("\n")
-    if lines.count(ORDER_HEADING) != 1:
-        raise PlanError("PLAN.md must hold exactly one '%s' section" % ORDER_HEADING)
+    _steps_section(lines, plan_name)
+    row = re.compile(r"^\|\s*(%s)\s*\|\s*(.*?)\s*\|\s*$" % id_pattern)
     rows = []
     for line in lines[lines.index(ORDER_HEADING) + 1:]:
-        if HEADING.match(line):
+        if line.startswith("#"):
             break
-        m = ORDER_ROW.match(line)
+        m = row.match(line)
         if m and m.group(1) not in [sid for sid, _ in rows]:
             waits = m.group(2)
             rows.append((m.group(1), None if waits in ("", "—", "-") else waits))
@@ -164,17 +187,18 @@ def _classes(step):
     return ", then ".join(step["classes"])
 
 
-def build_board(plan_text):
+def build_board(plan_text, id_pattern, plan_name="PLAN"):
     """The board text that belongs between BEGIN and END ('\\n' newlines)."""
-    phases = parse_plan(plan_text)
-    steps = {s["id"]: s for p in phases for s in p["steps"]}
-    order = parse_order(plan_text)
+    groups = parse_plan(plan_text, id_pattern, plan_name)
+    steps = {s["id"]: s for g in groups for s in g["steps"]}
+    order = parse_order(plan_text, id_pattern, plan_name)
     for sid, _ in order:
         if sid not in steps:
-            raise PlanError("Order of work names %s, which PLAN has no head for" % sid)
+            raise PlanError("%s: Order of work names %s, which has no step head"
+                            % (plan_name, sid))
         if steps[sid]["resolved"]:
-            raise PlanError("Order of work still lists %s, which is %s: remove its row"
-                            % (sid, steps[sid]["resolved"]))
+            raise PlanError("%s: Order of work still lists %s, which is %s: remove its row"
+                            % (plan_name, sid, steps[sid]["resolved"]))
     out = []
     if order:
         sid, waits = order[0]
@@ -186,13 +210,13 @@ def build_board(plan_text):
         out.append(line)
     else:
         out.append("**Now:** no step in the order of work.")
-    for p in phases:
-        out += ["", "## " + p["heading"][len("### "):], ""]
-        if p["closed"]:
-            out.append(p["summary"])
+    for g in groups:
+        out += ["", "## " + g["heading"], ""]
+        if g["closed"]:
+            out.append(g["summary"])
             continue
-        for s in p["steps"]:
-            indent = " " * (4 * (s["id"].count(".") - 1))
+        for s in g["steps"]:
+            indent = " " * (4 * s["id"].count("."))
             if s["resolved"]:
                 box, suffix = "x", s["resolved"]
             elif s["in_progress"]:
@@ -205,125 +229,152 @@ def build_board(plan_text):
     return "\n".join(out) + "\n"
 
 
-def _split(guide_text):
-    if guide_text.count(BEGIN) != 1 or guide_text.count(END) != 1:
-        raise PlanError("GUIDE.md must hold exactly one board block between "
-                        "the generated-board markers")
-    a = guide_text.index(BEGIN) + len(BEGIN)
+def _split(guide_text, plan_name, guide_name):
+    begin = begin_marker(plan_name)
+    if guide_text.count(begin) != 1 or guide_text.count(END) != 1:
+        raise PlanError("%s must hold exactly one board block between the "
+                        "generated-board markers for %s" % (guide_name, plan_name))
+    a = guide_text.index(begin) + len(begin)
     b = guide_text.index(END)
     if a > b:
-        raise PlanError("GUIDE.md's board markers are out of order")
+        raise PlanError("%s's board markers are out of order" % guide_name)
     return guide_text[:a], guide_text[a:b], guide_text[b:]
 
 
-def board_problems(guide_text, plan_text):
-    """[] when GUIDE's board equals the one PLAN generates, else problems."""
+def board_problems(guide_text, plan_text, id_pattern, plan_name="PLAN", guide_name="GUIDE"):
+    """[] when the guide's board equals the one its plan generates, else problems."""
     try:
-        _, block, _ = _split(guide_text.replace("\r\n", "\n"))
-        want = "\n" + build_board(plan_text.replace("\r\n", "\n"))
+        _, block, _ = _split(guide_text.replace("\r\n", "\n"), plan_name, guide_name)
+        want = "\n" + build_board(plan_text.replace("\r\n", "\n"), id_pattern, plan_name)
     except PlanError as error:
         return [str(error)]
     if block != want:
-        return ["GUIDE.md's board is stale against PLAN.md: run "
-                "`python tools/guide_board.py`"]
+        return ["%s's board is stale against %s: run `python tools/guide_board.py`"
+                % (guide_name, plan_name)]
     return []
 
 
-def write_board():
-    raw = GUIDE.read_bytes().decode("utf-8")
+def write_board(plan_name, guide_name, id_pattern):
+    guide = ROOT / guide_name
+    raw = guide.read_bytes().decode("utf-8")
     crlf = "\r\n" in raw
     if crlf and raw.count("\r\n") != raw.count("\n"):
-        raise PlanError("GUIDE.md has mixed line endings")
-    head, _, tail = _split(raw.replace("\r\n", "\n"))
-    plan = PLAN.read_text(encoding="utf-8").replace("\r\n", "\n")
-    text = head + "\n" + build_board(plan) + tail
-    GUIDE.write_bytes((text.replace("\n", "\r\n") if crlf else text).encode("utf-8"))
+        raise PlanError("%s has mixed line endings" % guide_name)
+    head, _, tail = _split(raw.replace("\r\n", "\n"), plan_name, guide_name)
+    plan = (ROOT / plan_name).read_text(encoding="utf-8").replace("\r\n", "\n")
+    text = head + "\n" + build_board(plan, id_pattern, plan_name) + tail
+    guide.write_bytes((text.replace("\n", "\r\n") if crlf else text).encode("utf-8"))
 
 
 def self_test():
-    plan = "\n".join([
-        "## S8. Implementation plan",
+    numbered = "\n".join([
+        "## S1. Specification",
+        "",
+        "- **5 Not a step: outside the steps section — `V`.** Ignored.",
+        "",
+        "## S8. Requests",
+        "",
+        "### Capability classes",
+        "",
+        "Not a group: it holds no step.",
         "",
         "### Order of work",
         "",
         "| Step | Waits for |",
         "|---|---|",
-        "| 2.2 | a decision |",
-        "| 2.3.1 | — |",
+        "| 2 | a decision |",
+        "| 3.1 | — |",
         "",
-        "### Phase 1 — Old work — CLOSED 2026-01-01",
+        "### History — CLOSED 2026-01-01",
         "",
         "Everything was done.",
         "Twice.",
         "",
         "Pointer paragraph, not shown.",
         "",
-        "### Phase 2 — New work",
+        "### Open requests",
         "",
-        "- **(a) A group, not a step** (2.1–2.3).",
-        "  - **2.1 First step — `I1`, DONE 2026-02-02.** Body.",
-        "  - **2.2 Second step, wrapped",
+        "- **(a) A group, not a step** (1–3).",
+        "  - **1 First step — `I1`, DONE 2026-02-02.** Body.",
+        "  - **2 Second step, wrapped",
         "    over two lines — `R2`, then `I2`.** Body.",
-        "- **2.3 Parent — `M`, EXIT.** Body.",
-        "    - **2.3.1 Child — `V`, IN PROGRESS.** Body.",
-        "- Not a step: **2.9** is only cited here.",
+        "- **3 Parent — `M`, EXIT.** Body.",
+        "    - **3.1 Child — `V`, IN PROGRESS.** Body.",
+        "- Not a step: **9** is only cited here.",
         "",
-        "### Post-release research",
-        "- **2.7 Outside any phase — `V`.** Ignored.",
+        "## S9. Risks",
+        "- **7 Outside the steps section — `V`.** Ignored.",
     ])
     want = "\n".join([
-        "**Now: 2.2** (`R2`, then `I2`): Second step, wrapped over two lines."
+        "**Now: 2** (`R2`, then `I2`): Second step, wrapped over two lines."
         " Waits for a decision.",
         "",
-        "## Phase 1 — Old work — CLOSED 2026-01-01",
+        "## History — CLOSED 2026-01-01",
         "",
         "Everything was done.",
         "Twice.",
         "",
-        "## Phase 2 — New work",
+        "## Open requests",
         "",
-        "- [x] **2.1** First step — DONE 2026-02-02",
-        "- [ ] **2.2** Second step, wrapped over two lines — **R2, then I2**",
-        "- [ ] **2.3** Parent — **M**, EXIT",
-        "    - [ ] **2.3.1** Child — **IN PROGRESS / V**",
+        "- [x] **1** First step — DONE 2026-02-02",
+        "- [ ] **2** Second step, wrapped over two lines — **R2, then I2**",
+        "- [ ] **3** Parent — **M**, EXIT",
+        "    - [ ] **3.1** Child — **IN PROGRESS / V**",
     ]) + "\n"
-    got = build_board(plan)
+    got = build_board(numbered, NUMBERED)
     if got != want:
         sys.stdout.write("FAIL: board self-test\n--- want\n%s--- got\n%s" % (want, got))
         return 1
-    guide = "# G\n\n%s\n%s%s\n\nrest\n" % (BEGIN, want, END)
-    if board_problems(guide, plan):
+    lettered = (numbered.replace("**1 ", "**A ").replace("**2 ", "**B ")
+                .replace("**3 ", "**C ").replace("**3.1 ", "**C.1 ")
+                .replace("| 2 |", "| B |").replace("| 3.1 |", "| C.1 |"))
+    want_lettered = (want.replace("**1**", "**A**").replace("**2**", "**B**")
+                     .replace("**3**", "**C**").replace("**3.1**", "**C.1**")
+                     .replace("**Now: 2**", "**Now: B**"))
+    got = build_board(lettered, LETTERED)
+    if got != want_lettered:
+        sys.stdout.write("FAIL: lettered board self-test\n--- want\n%s--- got\n%s"
+                         % (want_lettered, got))
+        return 1
+    guide = "# G\n\n%s\n%s%s\n\nrest\n" % (begin_marker("PLAN"), want, END)
+    if board_problems(guide, numbered, NUMBERED):
         sys.stdout.write("FAIL: board self-test: a current board reads stale\n")
         return 1
-    if not board_problems(guide.replace("Child", "Kid"), plan):
+    if not board_problems(guide.replace("Child", "Kid"), numbered, NUMBERED):
         sys.stdout.write("FAIL: board self-test: an edited board reads current\n")
         return 1
-    if not board_problems(guide.replace("\n", "\r\n"), plan.replace("Child", "Kid")):
-        sys.stdout.write("FAIL: board self-test: a PLAN edit does not stale the board\n")
+    if not board_problems(guide.replace("\n", "\r\n"), numbered.replace("Child", "Kid"),
+                          NUMBERED):
+        sys.stdout.write("FAIL: board self-test: a plan edit does not stale the board\n")
+        return 1
+    if not board_problems(guide, numbered, NUMBERED, plan_name="PLAN_GUI"):
+        sys.stdout.write("FAIL: board self-test: another plan's markers read current\n")
         return 1
     malformed = (
-        (plan.replace(" — `V`, IN PROGRESS.** Body.", ".** Body."), "a head without ' — '"),
-        (plan.replace("- **2.3 Parent", "- **3.3 Parent"), "a step in the wrong phase"),
-        (plan.replace("— `M`, EXIT.**", "— EXIT.**"), "a head without a class"),
-        (plan.replace("| 2.3.1 | — |", "| 2.3.1 | — |\n| 2.1 | — |"), "a finished step in the order"),
-        (plan.replace("| 2.3.1 | — |", "| 2.8 | — |"), "an unknown step in the order"),
-        (plan.replace("  - **2.1 First", "  - **2.2 First"), "a step defined twice"),
+        (numbered.replace(" — `V`, IN PROGRESS.** Body.", ".** Body."), "a head without ' — '"),
+        (numbered.replace("— `M`, EXIT.**", "— EXIT.**"), "a head without a class"),
+        (numbered.replace("| 3.1 | — |", "| 3.1 | — |\n| 1 | — |"), "a finished step in the order"),
+        (numbered.replace("| 3.1 | — |", "| 8 | — |"), "an unknown step in the order"),
+        (numbered.replace("  - **1 First", "  - **2 First"), "a step defined twice"),
+        (numbered.replace("    - **3.1 Child", "    - **4.1 Child")
+         .replace("| 3.1 |", "| 4.1 |"), "a sub-step without its step"),
+        (numbered.replace("### Order of work", "### Order"), "a plan without an order of work"),
     )
     for bad, why in malformed:
         try:
-            build_board(bad)
+            build_board(bad, NUMBERED)
         except PlanError:
             continue
         sys.stdout.write("FAIL: board self-test accepted %s\n" % why)
         return 1
-    sys.stdout.write("board generator self-test: PASS (output, staleness, "
-                     "%d malformed plans)\n" % len(malformed))
+    sys.stdout.write("board generator self-test: PASS (numbered and lettered output, "
+                     "staleness, %d malformed plans)\n" % len(malformed))
     return 0
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate GUIDE.md's board from PLAN.md.")
-    parser.add_argument("--check", action="store_true", help="exit 1 if the board is stale")
+    parser = argparse.ArgumentParser(description="Generate each guide's board from its plan.")
+    parser.add_argument("--check", action="store_true", help="exit 1 if a board is stale")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
@@ -331,16 +382,21 @@ def main():
         return self_test()
     try:
         if args.check:
-            problems = board_problems(GUIDE.read_text(encoding="utf-8"),
-                                      PLAN.read_text(encoding="utf-8"))
+            problems = []
+            for plan_name, guide_name, id_pattern in PAIRS:
+                problems += board_problems(
+                    (ROOT / guide_name).read_text(encoding="utf-8"),
+                    (ROOT / plan_name).read_text(encoding="utf-8"),
+                    id_pattern, plan_name, guide_name)
             for problem in problems:
                 sys.stdout.write("  %s\n" % problem)
             return 1 if problems else 0
-        write_board()
+        for plan_name, guide_name, id_pattern in PAIRS:
+            write_board(plan_name, guide_name, id_pattern)
+            sys.stdout.write("%s board regenerated from %s\n" % (guide_name, plan_name))
     except PlanError as error:
         sys.stdout.write("FAIL: %s\n" % error)
         return 1
-    sys.stdout.write("GUIDE.md board regenerated from PLAN.md\n")
     return 0
 
 
