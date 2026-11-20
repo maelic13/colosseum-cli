@@ -106,7 +106,7 @@ Use a short imperative commit subject that names the outcome, preferably with
 the step identifier, for example:
 
 ```text
-Send movestogo for moves-per-period controls (step 4)
+Send movestogo for moves-per-period controls (step 3)
 ```
 
 Do not:

@@ -50,7 +50,7 @@ maintainer review found cheaper before anyone depended on published defaults
 requests followed as 12.1–12.11 under the old numbering
 ([record](docs/architecture/requests-record.md)): 12.1–12.4 shipped as CLI
 0.2.0, CLI 0.3.0–0.5.0 followed from adoption, and 12.5–12.11 are on
-`master` with S8's step 1 for CLI 0.6.0. Since the split (2026-11-14,
+`master` with S8's step 1, toward CLI 0.6.0 (step 9). Since the split (2026-11-14,
 [ADR-0011](docs/architecture/adr/0011-desktop-application-as-separate-cli-client.md),
 [ADR-0012](docs/architecture/adr/0012-names-and-repositories-after-the-split.md))
 this repository is the CLI alone; the desktop application is
@@ -1683,11 +1683,13 @@ supported.
 The CLI is taken forward by requests: reports and requests from projects
 using it, and the maintainer's own. Each request becomes one numbered step
 here with its regression tests. Steps are numbered 1, 2, 3, … in the order
-they are recorded and keep their number once given, done or refused; a
-step's text names the request it answers. A request for a project's
-threshold or verdict is refused, and the figures it needs are offered
-instead (S3, *Numbers, not verdicts*). The work before this numbering —
-Phases 0–10 and the requests 12.1–12.11 — is in the records (*History*).
+they are recorded and keep their number once given, done or refused (the
+maintainer moved the 0.6.0 release last and renumbered 2–9 on 2026-11-20,
+before work on any of them began); a step's text names the request it
+answers. A request for a project's threshold or verdict is refused, and the
+figures it needs are offered instead (S3, *Numbers, not verdicts*). The work
+before this numbering — Phases 0–10 and the requests 12.1–12.11 — is in the
+records (*History*).
 
 A step changes no statistic and breaks no run-file schema or run-directory
 layout unless its text says so; one that does is a minor release, said in
@@ -1740,14 +1742,14 @@ row; a finished step leaves the table in the commit that finishes it.
 
 | Step | Waits for |
 |---|---|
-| 2 | the maintainer's release |
-| 3 | 2 |
+| 2 | — |
+| 3 | — |
 | 4 | — |
 | 5 | — |
 | 6 | — |
 | 7 | — |
-| 8 | — |
-| 9 | the maintainer wanting the platforms |
+| 8 | the maintainer wanting the platforms |
+| 9 | steps 2–8, and the maintainer's release |
 
 ### History — CLOSED
 
@@ -1816,7 +1818,7 @@ documents and the [ADRs](docs/architecture/adr/README.md).
   symmetry, the adoption-audit corrections, the unscorable exclusion, the
   versions and tag contract, one build entry point, the user documentation
   and the acceptance repeat. 10.9m rejected (the forfeits were an engine
-  defect); 10.9h and 10.9p deferred, 10.9t reopened as requests step 5;
+  defect); 10.9h and 10.9p deferred, 10.9t reopened as requests step 4;
   10.9g's two maintainer probes owed and not blocking. Evidence:
   [record](docs/architecture/phase-10-record.md),
   [qualification](docs/architecture/phase-10-qualification.md),
@@ -1880,7 +1882,7 @@ Facts from those phases that still govern new work:
     `is_tablebase_option`. The runner's live-game state and
     `performance_rating` stay until `PLAN_GUI.md` step A decides.
   - Planned work: Rarog request 8 (12.17) refused as 10; 12.15's wait
-    refused as 12 and its measurement kept as 7.
+    refused as 12 and its measurement kept as 6.
   - Documents: the plan split into this requests plan and `PLAN_GUI.md`
     with `GUIDE_GUI.md`, both renumbered; `tools/guide_board.py` generates
     both boards; the finished requests moved to `requests-record.md`; the
@@ -1891,17 +1893,7 @@ Facts from those phases that still govern new work:
   both boards current; `spsa read` on Basilisk's b54 run directory gives
   the same figures as before. Nothing changes how a game is played, so no
   oracle replay or parity check applies.
-- **2 Release CLI 0.6.0 — `M`.** The engine projects' first requests for
-  0.6.0 (record 12.5–12.11) and step 1, released through pull-request
-  delivery for the first time: the release pull request "Release 0.6.0"
-  from a branch off `master` (version, `Cargo.lock`, the changelog dated),
-  `cargo xtask release-check v0.6.0` there, the candidate green,
-  squash-merged, and the annotated `v0.6.0` tag pushed by the maintainer
-  (`docs/DEVELOPMENT.md` *Releases*). The changelog names what refuses a
-  resume: an interrupted EPD-book run started by an earlier version, and an
-  SPRT run started with a preset.
-  **Exit:** the release published from `master`, its archives smoked.
-- **3 Refactor and simplify `colosseum-cli` — `R2`, then `I2`.** The
+- **2 Refactor and simplify `colosseum-cli` — `R2`, then `I2`.** The
   maintainer's request of 2026-11-20, taken while the CLI's functions are
   simplified and generalised. The crate is about 28,000 of the workspace's
   53,000 lines: `composition/spsa.rs` alone is 3,100, `match_runner.rs`
@@ -1920,44 +1912,43 @@ Facts from those phases that still govern new work:
   **Exit:** the accepted slices landed, with before-and-after sizes recorded
   here; the required suite, `colosseum-docs --check`, the oracle replay and
   the parity matrix unchanged.
-- **4 Moves-per-period time controls — `I2`.** Rarog request 4 (was 12.12). Per
-  side, N moves in T, repeating, with an optional increment: `go`
+- **3 Moves-per-period time controls — `I2`.** Rarog request 4 (was 12.12).
+  Per side, N moves in T, repeating, with an optional increment: `go`
   carries `movestogo` with the moves left in the period, the clock is
-  refilled at each period boundary, and the PGN `TimeControl` tag is
-  written in the standard form (`40/900`). `match`, `sprt`, `tournament`,
-  the gauntlet and run files accept it. It is the one experiment family
-  an engine cannot run through the CLI today. A test at `10/5` asserts
+  refilled at each period boundary, and the PGN `TimeControl` tag is written
+  in the standard form (`40/900`). `match`, `sprt`, `tournament`, the
+  gauntlet and run files accept it. It is the one experiment family an
+  engine cannot run through the CLI today. A test at `10/5` asserts
   `movestogo 10` on each side's first move, `1` on the tenth and the
   refilled clock on the eleventh.
-- **5 SPSA without an iteration barrier — `R2`, then `I2`.** Rarog
-  request 1 (was 12.13). Reopens 10.9t
+- **4 SPSA without an iteration barrier — `R2`, then `I2`.** Rarog request 1
+  (was 12.13). Reopens 10.9t
   ([record](docs/architecture/phase-10-record.md), item (ad)) on Rarog's
   evidence (RAR-M88): tunes filled 80% of their slots against 98% for
-  matches on the same slots, engine and clock, because an iteration
-  lasts as long as its slowest slot; about 1.24× the games per hour are
-  available. The `R2` part chooses between (ad)'s overlapped iterations
-  (one update stale, applied strictly in order) and a per-pair update as
-  results arrive, and records it. Whatever is chosen keeps exact replay —
-  the journal records for each unit the perturbation it played, the
-  centre it was played at, and the order updates were applied — resume
-  from the run directory, the gain schedule stated per update (scaled in
-  the run file if the unit changes), the synchronous mode, unchanged, as
-  an option, and the SPSA reads (`spsa read`, record 12.11), with the
-  unit stated. (ad)'s fit-quality
-  evidence is required before it becomes the default. Check: under
-  RAR-M88's conditions slot fill above 95% and at least 1.15× its games
-  per hour; a synchronous run identical to 0.5.0's. 10.9p stays deferred
-  behind it.
-- **6 Placement for engines with more than one thread — `I2`.** Rarog
-  request 5 (was 12.14). An automatic slot holds both SMT siblings of its cores, and
-  Windows packs a four-thread engine onto two or three cores' siblings
-  in it (Rarog's 4T/1T ratio read 2.5–2.7 against 4.03 sibling-free).
-  When any engine in a slot runs more than one thread, `--placement
-  auto` gives the slot one logical CPU per physical core and no
-  sibling; the resolved configuration names the policy applied. Tests
-  on synthetic topologies; Rarog's 4T/1T ratio near 4 is the field
-  check. 10.9h stays deferred.
-- **7 Host load, measured and reported — `R2`, then `I2`.** Rarog requests
+  matches on the same slots, engine and clock, because an iteration lasts as
+  long as its slowest slot; about 1.24× the games per hour are available.
+  The `R2` part chooses between (ad)'s overlapped iterations (one update
+  stale, applied strictly in order) and a per-pair update as results arrive,
+  and records it. Whatever is chosen keeps exact replay — the journal
+  records for each unit the perturbation it played, the centre it was played
+  at, and the order updates were applied — resume from the run directory,
+  the gain schedule stated per update (scaled in the run file if the unit
+  changes), the synchronous mode, unchanged, as an option, and the SPSA
+  reads (`spsa read`, record 12.11), with the unit stated. (ad)'s
+  fit-quality evidence is required before it becomes the default. Check:
+  under RAR-M88's conditions slot fill above 95% and at least 1.15× its
+  games per hour; a synchronous run identical to 0.5.0's. 10.9p stays
+  deferred behind it.
+- **5 Placement for engines with more than one thread — `I2`.** Rarog
+  request 5 (was 12.14). An automatic slot holds both SMT siblings of its
+  cores, and Windows packs a four-thread engine onto two or three cores'
+  siblings in it (Rarog's 4T/1T ratio read 2.5–2.7 against 4.03
+  sibling-free). When any engine in a slot runs more than one thread,
+  `--placement auto` gives the slot one logical CPU per physical core and no
+  sibling; the resolved configuration names the policy applied. Tests on
+  synthetic topologies; Rarog's 4T/1T ratio near 4 is the field check. 10.9h
+  stays deferred.
+- **6 Host load, measured and reported — `R2`, then `I2`.** Rarog requests
   6 and 10, one sampler (was 12.15). The CLI alone knows the run's game
   CPUs and has the per-platform adapters, so the measurement is the CLI's.
   Whether a busy host is worth waiting for, or a game worth discarding, is
@@ -1993,16 +1984,25 @@ Facts from those phases that still govern new work:
   in that CPU's figures and in the games it overlapped, and an undisturbed
   run's figures stay near zero; `host-load --json` reports a planted busy
   CPU.
-- **8 The clock left on every move — `I1`.** Rarog request 7 (was 12.16). The
-  mover's clock after the move, in milliseconds, in each PGN move
-  comment, with the annotation writer's version bumped. A test asserts
-  each move's clock equals that side's previous one minus `t` plus the
-  increment.
-- **9 Release builds for Linux ARM64 and Intel macOS — `M`.** Rarog
-  request 3 (was 12.18). `aarch64-unknown-linux-gnu` and `x86_64-apple-darwin` in the
-  release matrix if the maintainer wants those platforms, each asset
+- **7 The clock left on every move — `I1`.** Rarog request 7 (was 12.16).
+  The mover's clock after the move, in milliseconds, in each PGN move
+  comment, with the annotation writer's version bumped. A test asserts each
+  move's clock equals that side's previous one minus `t` plus the increment.
+- **8 Release builds for Linux ARM64 and Intel macOS — `M`.** Rarog request
+  3 (was 12.18). `aarch64-unknown-linux-gnu` and `x86_64-apple-darwin` in
+  the release matrix if the maintainer wants those platforms, each asset
   smoked with `--version` and a short `match`; declaring them supported
   follows the recurring procedure.
+- **9 Release CLI 0.6.0 — `M`.** Every request on `master` since 0.5.0 —
+  record 12.5–12.11 and steps 1–8 — taken first, as the maintainer decided
+  (2026-11-20), then released through pull-request delivery for the first
+  time: the release pull request "Release 0.6.0" from a branch off `master`
+  (version, `Cargo.lock`, the changelog dated), `cargo xtask release-check
+  v0.6.0` there, the candidate green, squash-merged, and the annotated
+  `v0.6.0` tag pushed by the maintainer (`docs/DEVELOPMENT.md` *Releases*).
+  The changelog names what refuses a resume: an interrupted EPD-book run
+  started by an earlier version, and an SPRT run started with a preset.
+  **Exit:** the release published from `master`, its archives smoked.
 
 **Exit criterion for each:** its tests pass, the command reference is
 regenerated, `CHANGELOG.md` Unreleased names each change, and the run-file
@@ -2031,7 +2031,7 @@ step keeps its number.
   Rarog requests 6 and 10 (part of 12.15): `--idle-wait`,
   `--idle-threshold` (20%), `--on-busy start|refuse` and
   `--disturbance-limit` (5%), with a progress line and a `results.txt` flag
-  past the limit. Each is a threshold or a policy of one client. Step 7
+  past the limit. Each is a threshold or a policy of one client. Step 6
   gives the figures, and `host-load --json` lets a client decide before it
   starts a run.
 
@@ -2044,7 +2044,7 @@ Not steps until reopened; each needs its own evidence first.
   Linux or macOS placement report, or before CLI 1.0.0 —
   [record](docs/architecture/phase-10-record.md), item (r).
 - **10.9p** — Two games per physical core for `spsa` and `match` only, as
-  a measured experiment. Reopens only if step 5 leaves a margin worth it —
+  a measured experiment. Reopens only if step 4 leaves a margin worth it —
   [record](docs/architecture/phase-10-record.md), item (z).
 - **10.9g probes** — the 2,000-game 3+0.03 scramble probe and the 100 ms,
   14-slot, 50,000-move outlier probe, maintainer-run, informative,

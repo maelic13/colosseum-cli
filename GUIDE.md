@@ -1,7 +1,7 @@
 # Colosseum CLI — development guide
 
 <!-- board: generated from PLAN.md by `python tools/guide_board.py`; edit PLAN.md, never this block -->
-**Now: 2** (`M`): Release CLI 0.6.0. Waits for the maintainer's release.
+**Now: 2** (`R2`, then `I2`): Refactor and simplify `colosseum-cli`.
 
 ## History — CLOSED
 
@@ -16,14 +16,14 @@ documents and the [ADRs](docs/architecture/adr/README.md).
 ## Requests
 
 - [x] **1** Keep the CLI general — DONE 2026-11-20
-- [ ] **2** Release CLI 0.6.0 — **M**
-- [ ] **3** Refactor and simplify `colosseum-cli` — **R2, then I2**
-- [ ] **4** Moves-per-period time controls — **I2**
-- [ ] **5** SPSA without an iteration barrier — **R2, then I2**
-- [ ] **6** Placement for engines with more than one thread — **I2**
-- [ ] **7** Host load, measured and reported — **R2, then I2**
-- [ ] **8** The clock left on every move — **I1**
-- [ ] **9** Release builds for Linux ARM64 and Intel macOS — **M**
+- [ ] **2** Refactor and simplify `colosseum-cli` — **R2, then I2**
+- [ ] **3** Moves-per-period time controls — **I2**
+- [ ] **4** SPSA without an iteration barrier — **R2, then I2**
+- [ ] **5** Placement for engines with more than one thread — **I2**
+- [ ] **6** Host load, measured and reported — **R2, then I2**
+- [ ] **7** The clock left on every move — **I1**
+- [ ] **8** Release builds for Linux ARM64 and Intel macOS — **M**
+- [ ] **9** Release CLI 0.6.0 — **M**
 
 ## Refused
 
@@ -66,10 +66,10 @@ class and the model *Current model mapping* below gives it.
 |---|---|
 | Branch / versions | `master` holds **CLI 0.5.0** (2026-10-29), the latest release, and the unreleased 0.6.0 work; releases are plain `vX.Y.Z` tags (`v0.1.0`–`v0.5.0` re-tagged from `cli-v`). This repository is CLI-only since the split, 2026-11-14: `maelic13/colosseum-cli`, with the desktop application in `maelic13/colosseum`. Work lands on `master` as one squash pull request per piece |
 | What exists | Phases 0–10 complete and published; requests 12.1–12.4 as CLI 0.2.0, then 0.3.0–0.5.0 from adoption; 12.5–12.11 and step 1 on `master` for 0.6.0: an unparsable start position refused, the time to an SPSA stop point, each side's own increment, a fixed match's paired score, EPD move counters, node-budget figures, `spsa read`, and the CLI kept general — figures, not verdicts |
-| What is missing | Step 2, the 0.6.0 release; then step 3, the refactor; then Rarog's remaining requests, steps 4–9 |
+| What is missing | Step 2, the refactor; Rarog's remaining requests, steps 3–8; then step 9, the 0.6.0 release, with every request in it |
 | Validation engines | Two independently developed UCI engines in different languages and build systems. Any two UCI engines would serve; nothing depends on which |
 | Platform status | Windows/Linux/macOS ☑ required debug and optimized CI on every pull request into `master` · Windows x86-64/ARM64, Linux x86-64 and macOS ARM64 release archives ☑ built, packaged and smoked as a candidate on every pull request, exactly as a tag builds them |
-| Next step | The board's **Now** — step 2, the 0.6.0 release (`M`), the maintainer's; then step 3, the refactor (`R2`, then `I2`) |
+| Next step | The board's **Now** — step 2, the refactor (`R2`, then `I2`); then steps 3–8; the 0.6.0 release, step 9, last |
 | Confirmed decisions | The 2026-09-22 set, recorded with the release preparation in [`phase-10-record.md`](docs/architecture/phase-10-record.md): exclusion for unspawnable engines, the xtask surface, versions kept in artifact names, the throughput margin not chased. The 2026-09-28 naming set and the 2026-11-14 split set, in [ADR-0012](docs/architecture/adr/0012-names-and-repositories-after-the-split.md): Colosseum and `colosseum-cli` kept; plain `v` tags with the `cli-v` releases re-tagged; Rarog's delivery adopted — short-lived branches, one squash pull request each with a short title and description, CI and the release candidate on every pull request; the Rust toolchain pinned (1.100.0), each update its own tested pull request. The 2026-11-14 SPSA read decisions (record 12.11): measurement in the CLI, stop verdicts in the projects. The 2026-11-20 set: *Numbers, not verdicts* (PLAN §S3); the plans split into requests and GUI and renumbered; the GUI programme under revision (`PLAN_GUI.md` step A) |
 
 ## Current model mapping
@@ -145,13 +145,15 @@ in short:
 
 ## What to do now
 
-1. **Step 2, CLI 0.6.0** — the release pull request "Release 0.6.0" and the
-   `v0.6.0` tag, the first full run of the delivery path.
-2. **Step 3, the refactor** — its `R2` part measures and proposes slices for
+1. **Step 2, the refactor** — its `R2` part measures and proposes slices for
    the maintainer to accept; then the accepted slices, one commit each, with
    nothing observable changing.
-3. **Steps 4–9**, Rarog's remaining requests, in the order of work. Small
-   steps may share a branch and one pull request; 4, 5 and 7 have their own.
+2. **Steps 3–8**, Rarog's remaining requests, in the order of work. Small
+   steps may share a branch and one pull request; 3, 4 and 6 have their own.
+3. **Step 9, CLI 0.6.0** — once every request is in: the release pull
+   request "Release 0.6.0" and the `v0.6.0` tag, the first full run of the
+   delivery path. Until then, finished work lands on `master` by pull
+   request and waits there for the release.
 4. The GUI programme is decided apart, at `PLAN_GUI.md` step A.
 
 ## Working rhythm
