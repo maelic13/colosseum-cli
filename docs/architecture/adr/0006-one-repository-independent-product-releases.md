@@ -47,7 +47,7 @@ versus prerelease status. README links are product-specific and do not use
 `/releases/latest`.
 
 The detailed version, artifact, CI, release-note and migration contracts are in
-[`release-architecture.md`](../release-architecture.md).
+`release-architecture.md` (in the repository's history at `56cbd00`).
 
 ## Consequences
 

@@ -120,15 +120,16 @@ fn a_finished_tune_reads_its_whole_run_and_matches_its_own_records() {
     assert_eq!(read["planned_iterations"], 40);
     assert_eq!(read["coordinate_count"], 2);
     assert_eq!(read["games_per_iteration"], 2);
-    assert_eq!(read["family_alpha"], 0.05);
-    assert_eq!(read["excess_line_sd"], 2.0);
+    // Figures only: no line, verdict, rail or forecast.
+    for verdict in ["live", "familywise_line", "over_line", "rails", "forecast"] {
+        assert!(read.get(verdict).is_none(), "{verdict}: {read}");
+    }
+    assert!(read["coordinate_se_elo"].is_number(), "{read}");
     assert_eq!(read["gain"]["null_stream"], "spsa-read-null");
     assert_eq!(
         read["gain"]["since_start"]["span"],
         serde_json::json!([0, 40])
     );
-    // At the end of its schedule a tune has nothing to forecast.
-    assert!(read["forecast"].is_null(), "{read}");
     // The replay is the run's own centres, the checkpoint's and result.json's.
     let integrity = &read["integrity"];
     assert_eq!(integrity["worst_deviation"], 0.0, "{integrity}");
@@ -148,7 +149,8 @@ fn a_finished_tune_reads_its_whole_run_and_matches_its_own_records() {
         assert_eq!(coordinate["centre"], rows[40][index]);
         assert!(coordinate["z"].is_number());
         assert!(coordinate["clamp_share"].is_number());
-        assert!(coordinate.get("rail").is_some());
+        assert!(coordinate["outward_z"].is_number());
+        assert!(coordinate["distance_to_bound"].is_number());
     }
 
     // A window inside the run, and the same text read.
@@ -162,12 +164,11 @@ fn a_finished_tune_reads_its_whole_run_and_matches_its_own_records() {
         window["gain"]["since_start"]["span"],
         serde_json::json!([0, 30])
     );
-    assert_eq!(window["forecast"]["span"], serde_json::json!([30, 40]));
     let text = cli().args(["spsa", "read"]).arg(&run).output().unwrap();
     assert!(text.status.success());
     let text = String::from_utf8(text.stdout).unwrap();
     for line in [
-        "familywise line",
+        "max |z|",
         "sum z^2 - n",
         "gain since iteration 0",
         "integrity",
@@ -190,8 +191,6 @@ fn a_tune_read_while_it_runs_reads_only_its_completed_iterations() {
     assert_eq!(read["completed_iterations"], 12);
     assert_eq!(read["planned_iterations"], 40);
     assert_eq!(read["window"], serde_json::json!([0, 12]));
-    assert_eq!(read["forecast"]["span"], serde_json::json!([12, 40]));
-    assert_eq!(read["forecast"]["upper_bound"], true);
     assert_eq!(read["integrity"]["worst_deviation"], 0.0);
     // Past the completed iterations is a usage error.
     assert_eq!(spsa_read(&run, &["--to", "13"]).status.code(), Some(2));

@@ -5,7 +5,7 @@
   the fallback order in decision 5, the reason in decision 2 and the placement,
   run-file and FEN sentences in decision 4. The decision itself is unchanged
 - **Date:** 2026-09-27
-- **Relates to:** PLAN §S4 and Phase 11; [GUI v2 research](../gui-v2-research.md);
+- **Relates to:** PLAN §S4 and Phase 11; GUI v2 research (`gui-v2-research.md`, in the repository's history at `56cbd00`);
   partially supersedes [ADR-0006](0006-one-repository-independent-product-releases.md)
   when step 14.1 completes
 

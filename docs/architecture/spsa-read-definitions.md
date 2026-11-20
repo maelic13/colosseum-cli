@@ -1,8 +1,17 @@
-# `spsa read` definitions (12.11, `R2`)
+# `spsa read` definitions
 
 The definitions `spsa read` computes, each pinned against the reference the
-engine projects use today, before any code. Signed off by the maintainer on
-2026-11-18; PLAN 12.11 holds the step and its decisions of 2026-11-14.
+engine projects use today, before any code (request 12.11, `R2`, signed off
+by the maintainer on 2026-11-18; the step and its decisions of 2026-11-14
+are in [`requests-record.md`](requests-record.md)).
+
+**Figures, not verdicts (2026-11-20, requests step 1).** The read reports
+figures and no verdict: the familywise and excess lines, live or quiet, the
+rails and the forecast the reference derives from them are a project's to
+apply, with its own thresholds. Their definitions stay below, marked *for a
+project*, so a project computes them from the read's figures as the
+reference does; the agreement test does exactly that and reaches the
+reference's verdicts on all five recorded tunes.
 
 ## The reference
 
@@ -59,18 +68,14 @@ error. `W = K1 − K0`.
   `D`. A coordinate's figure is `E × Σ δ[k][i] D[k] / W`, and its standard
   error, the same for every coordinate, is `E × sqrt(Σ D[k]²) / W`. 695
   stands for `1600 / ln 10` (694.87) and is kept as written.
-- **The familywise line.** `Φ⁻¹(1 − (1 − (1 − α_f)^(1/n)) / 2)` with family
-  alpha `α_f`, 0.05 by default (`--family-alpha`). `Φ⁻¹` is Wichura's
-  AS 241, the algorithm of Python's `NormalDist.inv_cdf`: the core's
-  existing quantile, a bisection on an approximate `erf`, is off by about
-  5e-5 at these tails, which moves the fourth digit.
 - **The excess.** `Σ z² − n`, and the same in units of its null SD
-  `sqrt(2n)`.
-- **Live or quiet.** Live when some `|z|` reaches the familywise line or the
-  excess reaches its line, 2 null SD by default (`--excess-sd`); otherwise
-  quiet. Both lines are reported with the read. A quiet read also reports
-  what it rules out: no coordinate is worth more than the line times the
-  standard error, and the forecast's upper reading (twice its SD).
+  `sqrt(2n)`. The read reports it, `max |z|` and the standard error.
+- *For a project:* **the familywise line**, `Φ⁻¹(1 − (1 − (1 − α_f)^(1/n)) / 2)`
+  at family alpha `α_f` (the reference's 0.05), with `Φ⁻¹` accurate in the
+  far tail (Python's `NormalDist.inv_cdf` is Wichura's AS 241); **live or
+  quiet**, live when some `|z|` reaches that line or the excess reaches its
+  own (the reference's 2 null SD); and what a quiet read rules out, no
+  coordinate worth more than the line times the standard error.
 - **The gradient**, coordinate `i` over iterations `S`, in Elo per unit of
   the coordinate: `E × Σ δ[k][i] D[k] c_k,i / (2 Σ c_k,i²)`, every iteration
   of `S` in the denominator, `D = 0` included (leaving those out reads the
@@ -97,22 +102,20 @@ error. `W = K1 − K0`.
   the null SD agrees within sampling error (its relative SE is about
   `1 / sqrt(2(N − 1))`, 11% at 40), so the fixtures pin the CLI's own null
   values beside the reference's.
-- **The forecast**, labelled an upper bound, over the next
-  `[K1, min(K1 + F, iterations))` with `F` the span (2,000,
-  `--forecast-span`; 0 turns it off): `factor × excess`, SD
-  `factor × sqrt(2n)`, with
-  `factor = (Σ_{segment} r_k f_k²) × mean_window(D²) × E / (2 × mean_window(f_k²) × W)`
-  and `f_k = (k + 1)^−γ`. There is none at the ceiling, and then no forecast
-  floor either.
-- **Rails.** A coordinate is near a bound when its centre at `K1` is within
-  `c` of it, `c` its perturbation at the last read iteration `K1 − 1`.
-  Its outward `z` is `z` near the maximum, `−z` near the minimum, `|z|`
-  near both, and none otherwise. A rail is an outward `z` at or past the
-  familywise line. Reported per coordinate: the distance to the nearer
-  bound, the outward `z` and the rail flag. **Decided 2026-11-18:** the
-  reference's rail candidate (an outward `z` of 2.0 or more under the line)
-  is not a CLI figure; the 2.0 is a project threshold, and a project
-  applies it to the outward `z`.
+- **Toward a bound.** Per coordinate the read reports its perturbation at
+  the last read iteration `K1 − 1`, its centre's distance at `K1` to the
+  nearer bound, and its **outward `z`**: `z` when the nearer bound is the
+  maximum and `−z` when it is the minimum (the minimum at the middle), so a
+  positive value is a push out of the range.
+- *For a project:* **a rail**, the reference's: the centre within one
+  perturbation of a bound (`distance ≤ perturbation`) and its outward `z`
+  at or past the familywise line; a range narrow enough to be near both
+  bounds reads `|z|` there. The reference's rail candidate (an outward `z`
+  of 2.0 or more under the line) and its **forecast** — the next segment's
+  gain from the window's excess held constant through the schedule,
+  `(Σ r_k f_k²) × mean(D²) × E / (2 × mean(f_k²) × W)` per unit of excess
+  with `f_k = (k + 1)^−γ`, from the schedule `spsa-schedule.json` records —
+  are a project's too.
 - **Clamp share.** The share of iterations `[0, K1)` on which either arm of
   the coordinate left its range: `centre[k] − c_k < min` or
   `centre[k] + c_k > max`, the runner's `arm_clamp`.
@@ -137,13 +140,12 @@ read: the journal's anchor and the verified schedule already check them.
 
 ## Output
 
-- **Text**: a summary block (window, `n`, both lines, max `|z|` and the
-  coordinates over the line, the excess in SD, live or quiet with what it
-  rules out, both gain reads with their null SDs, the forecast, rails,
-  clamps over 1%, faults, the integrity figure), then one row per
-  coordinate ordered by `|z|`: name, `z`, Elo across a perturbation,
-  centre, start, rounded value (the runner's round half away from zero),
-  clamp share, rail flag.
+- **Text**: a summary block (window, `n`, max `|z|`, the excess and the
+  excess in SD, the standard error, both gain reads with their null SDs,
+  faults, the integrity figure), then one row per coordinate ordered by
+  `|z|`: name, `z`, Elo across a perturbation, centre, start, rounded value
+  (the runner's round half away from zero), clamp share, outward `z`,
+  distance to the nearer bound.
 - **`--json`**: the same under schema `colosseum-spsa-read-v1`, stable field
   names, values unrounded (the reference rounds; agreement is checked at its
   rounding).
@@ -154,24 +156,25 @@ read: the journal's anchor and the verified schedule already check them.
 ## Not in the CLI
 
 As decided on 2026-11-14: no checkpoint grid, verdict, `faults-accepted`
-workflow, `--record` log or theta writing. A project keeps those in its
-wrapper, reads `spsa read --json` and pauses a tune with
-`--stop-after-iteration`.
+workflow, `--record` log or theta writing; and since 2026-11-20 no line,
+live or quiet, rail or forecast. A project keeps those in its wrapper, reads
+`spsa read --json` and pauses a tune with `--stop-after-iteration`.
 
 ## Fixtures
 
 - **Golden vectors** from the reference at the pinned revision: the sign
-  stream, the familywise lines for 8, 15, 29 and 49 coordinates, the
-  forecast floors, the gradient with zero scores, the rounding.
-- **Agreement**: the five recorded blocks exported compactly by a
-  repository Python tool from Basilisk's run directories (each block's
-  schedule, seed, starting centres, games per iteration, every iteration's
-  `D`, and a SHA-256 of its recorded centres, which the CLI's re-derived
-  centres must reproduce), with the reference's figures at the pinned
-  revision. A test reads them and matches every deterministic figure to the
-  reference's rounding, and the null SDs within the stated sampling error
-  as well as to the CLI's own committed values.
-- **Synthetic runs**: a planted gradient reading live and over the line,
-  none reading quiet, `z`'s variance about 1 over many seeds, the gain
-  read's mean about 0 over sign-randomised runs, and a tampered journal or a
-  wrong seed failing.
+  stream, the gradient with zero scores, the rounding.
+- **Agreement**: the five recorded blocks exported compactly by
+  `tools/spsa_read_fixtures.py` from Basilisk's run directories (each
+  block's schedule, seed, starting centres, games per iteration, every
+  iteration's `D`, and the recorded centres every 100 iterations, which the
+  CLI's re-derived centres must reproduce to within `1e-9` of a unit move,
+  the last bit another platform's `powf` may round differently), with the
+  reference's figures at the pinned revision. A test reads them and matches
+  every figure to the reference's rounding, reaches the reference's verdicts
+  by applying its lines to the figures, and matches the null SDs within the
+  stated sampling error as well as to the CLI's own committed values.
+- **Synthetic runs**: a planted gradient past the familywise line, none
+  under it, `z`'s variance about 1 over many seeds, the gain read's mean
+  about 0 over sign-randomised runs, the outward `z` at each bound, and a
+  tampered journal or a wrong seed failing.

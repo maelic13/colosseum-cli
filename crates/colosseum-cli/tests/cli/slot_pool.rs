@@ -190,8 +190,16 @@ fn an_sprt_pair_holds_one_slot_for_both_of_its_games() {
     uneven(&mut command, "b-");
     run(command
         .args([
-            "--preset",
-            "gainer",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
+            "--elo1",
+            "5",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
             "--max-pairs",
             "4",
             "--concurrency",

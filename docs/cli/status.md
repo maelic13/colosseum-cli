@@ -57,8 +57,8 @@ progress: none published yet; the first block is due once 20 games have been com
 
 SPSA tunes additionally support `colosseum-cli spsa status <run-dir>`. That
 command rebuilds the committed iterations from the verified journal and
-extends the common lifecycle view with trajectory, thirds, ETA and explicitly
-heuristic per-knob observations. It ends with the last committed iteration's own
+extends the common lifecycle view with trajectory, thirds, ETA and per-knob
+figures. It ends with the last committed iteration's own
 trajectory — its mini-match score, the gain and perturbation scale it used and
 what moved in it — which the progress blocks record but deliberately do not
 print. It likewise never repairs or mutates the run.

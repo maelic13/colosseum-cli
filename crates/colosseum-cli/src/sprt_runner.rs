@@ -313,7 +313,19 @@ impl SprtAccumulator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use colosseum_application::{SprtBundle, SprtDesign};
+    use colosseum_application::{SprtDesign, SprtParameters};
+    use colosseum_core::EloModel;
+
+    /// A normalized design of nElo 0 against 5 at 5% error rates.
+    fn gainer() -> SprtParameters {
+        SprtParameters {
+            model: EloModel::Normalized,
+            elo0: 0.0,
+            elo1: 5.0,
+            alpha: 0.05,
+            beta: 0.05,
+        }
+    }
     use colosseum_engine::{ClockAccountingReport, EngineFaultKind, GameFault, GameSide};
 
     #[derive(Debug, PartialEq)]
@@ -327,7 +339,7 @@ mod tests {
 
     fn replay_worker_completion_order(order: &[u32], winning: bool) -> CompletionReplay {
         let max_pairs = u32::try_from(order.len()).unwrap();
-        let design = SprtDesign::new(SprtBundle::Gainer.defaults(), max_pairs, None).unwrap();
+        let design = SprtDesign::new(gainer(), max_pairs).unwrap();
         let mut accumulator = SprtAccumulator::new(design, FaultPolicy::default());
         let mut queue = PairCommitQueue::new(1, max_pairs).unwrap();
         let mut official_pairs = 0;
@@ -492,7 +504,7 @@ mod tests {
             vector.record_pair(PairGameResult::Win, PairGameResult::Win);
             vector.record_pair(PairGameResult::Win, PairGameResult::Draw);
         }
-        let design = SprtDesign::new(SprtBundle::Gainer.defaults(), 1_000, None).unwrap();
+        let design = SprtDesign::new(gainer(), 1_000).unwrap();
         let parameters = design.parameters;
         let statistics = pentanomial_sprt(
             &vector,
@@ -511,7 +523,7 @@ mod tests {
 
     #[test]
     fn boundary_pair_is_official_and_every_later_completion_is_separate() {
-        let design = SprtDesign::new(SprtBundle::Gainer.defaults(), 1_000, None).unwrap();
+        let design = SprtDesign::new(gainer(), 1_000).unwrap();
         let mut accumulator = SprtAccumulator::new(design, FaultPolicy::default());
         for pair_id in 1..=1_000 {
             let second = if pair_id % 2 == 0 {
@@ -548,7 +560,7 @@ mod tests {
 
     #[test]
     fn losing_stream_crosses_h0() {
-        let design = SprtDesign::new(SprtBundle::Gainer.defaults(), 1_000, None).unwrap();
+        let design = SprtDesign::new(gainer(), 1_000).unwrap();
         let mut accumulator = SprtAccumulator::new(design, FaultPolicy::default());
         for pair_id in 1..=1_000 {
             let second = if pair_id % 2 == 0 {
@@ -603,7 +615,7 @@ mod tests {
             EngineFaultKind::Protocol,
             EngineFaultKind::IllegalMove,
         ] {
-            let design = SprtDesign::new(SprtBundle::Gainer.defaults(), 10, None).unwrap();
+            let design = SprtDesign::new(gainer(), 10).unwrap();
             let mut accumulator = SprtAccumulator::new(design, FaultPolicy::default());
             assert_eq!(
                 accumulator.admit(&fault_pair(kind)).unwrap(),
@@ -620,7 +632,7 @@ mod tests {
             assert_eq!(accumulator.sample.pairs(), 1, "{kind:?}");
         }
 
-        let design = SprtDesign::new(SprtBundle::Gainer.defaults(), 10, None).unwrap();
+        let design = SprtDesign::new(gainer(), 10).unwrap();
         let mut accumulator = SprtAccumulator::new(design, FaultPolicy::default());
         let pair = CompletePair {
             pair_id: 1,

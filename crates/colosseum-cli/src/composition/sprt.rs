@@ -21,9 +21,6 @@ pub(crate) struct SprtCommand {
     /// Required finite cap; reaching it without a boundary is inconclusive.
     #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
     pub(crate) max_pairs: u32,
-    /// Named starting design; every field remains overridable.
-    #[arg(long, value_enum)]
-    pub(crate) preset: Option<SprtBundleArg>,
     /// Elo parameterization used by both hypotheses and the LLR.
     #[arg(long, value_enum)]
     pub(crate) model: Option<SprtModelArg>,
@@ -51,21 +48,6 @@ pub(crate) struct SprtCommand {
 
     #[command(flatten)]
     pub(crate) conditions: MatchConditions,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub(crate) enum SprtBundleArg {
-    Gainer,
-    Simplify,
-}
-
-impl From<SprtBundleArg> for SprtBundle {
-    fn from(value: SprtBundleArg) -> Self {
-        match value {
-            SprtBundleArg::Gainer => Self::Gainer,
-            SprtBundleArg::Simplify => Self::Simplify,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -724,27 +706,15 @@ pub(crate) fn sprt_exit_code(status: sprt_runner::SprtStatus) -> u8 {
     }
 }
 
+/// The test as the command line or run file states it: every one of the
+/// model, both hypotheses and both error rates, none of them assumed.
 pub(crate) fn resolve_sprt_design(command: &SprtCommand) -> Result<SprtDesign, String> {
-    let bundle = command.preset.map(Into::into);
-    let defaults = bundle.map(SprtBundle::defaults);
-    let required = |value: Option<f64>, name: &str| {
-        value
-            .or_else(|| {
-                defaults.map(|parameters| match name {
-                    "elo0" => parameters.elo0,
-                    "elo1" => parameters.elo1,
-                    "alpha" => parameters.alpha,
-                    "beta" => parameters.beta,
-                    _ => unreachable!("known SPRT scalar"),
-                })
-            })
-            .ok_or_else(|| format!("--{name} is required without --preset"))
-    };
+    let required =
+        |value: Option<f64>, name: &str| value.ok_or_else(|| format!("--{name} is required"));
     let model = command
         .model
         .map(Into::into)
-        .or_else(|| defaults.map(|parameters| parameters.model))
-        .ok_or_else(|| "--model is required without --preset".to_owned())?;
+        .ok_or_else(|| "--model is required".to_owned())?;
     let parameters = SprtParameters {
         model,
         elo0: required(command.elo0, "elo0")?,
@@ -752,7 +722,7 @@ pub(crate) fn resolve_sprt_design(command: &SprtCommand) -> Result<SprtDesign, S
         alpha: required(command.alpha, "alpha")?,
         beta: required(command.beta, "beta")?,
     };
-    SprtDesign::new(parameters, command.max_pairs, bundle).map_err(|error| error.to_string())
+    SprtDesign::new(parameters, command.max_pairs).map_err(|error| error.to_string())
 }
 
 /// What a sequential test tells the operator: the sample, what it is worth in
@@ -1007,31 +977,17 @@ impl sprt_runner::PairObserver for DurableSprtOutput {
 
 /// The Elo model as a reader names it rather than as the enum spells it.
 /// What an SPRT tests, in one line: the Elo bounds of its two hypotheses in
-/// the model they are measured in, and the error rates. A named preset is
-/// named, and said to be overridden when any value differs from it, so the
-/// line never passes off an edited design as the preset.
+/// the model they are measured in, and the error rates.
 pub(crate) fn sprt_test_line(design: SprtDesign) -> String {
     let parameters = design.parameters;
     let scale = match parameters.model {
         EloModel::Normalized => "nElo",
         EloModel::Logistic => "Elo",
     };
-    let mut line = format!(
+    format!(
         "{scale} [{:.2}, {:.2}], alpha {}, beta {}",
         parameters.elo0, parameters.elo1, parameters.alpha, parameters.beta
-    );
-    if let Some(bundle) = design.bundle {
-        let name = match bundle {
-            SprtBundle::Gainer => "gainer",
-            SprtBundle::Simplify => "simplify",
-        };
-        if parameters == bundle.defaults() {
-            line.push_str(&format!(" (preset {name})"));
-        } else {
-            line.push_str(&format!(" (preset {name}, overridden)"));
-        }
-    }
-    line
+    )
 }
 
 fn elo_model_name(model: EloModel) -> &'static str {
@@ -1197,7 +1153,7 @@ mod progress_block_tests {
             alpha: 0.05,
             beta: 0.05,
         };
-        SprtDesign::new(parameters, max_pairs, None).unwrap()
+        SprtDesign::new(parameters, max_pairs).unwrap()
     }
 
     fn players() -> Players {
@@ -1216,22 +1172,17 @@ mod progress_block_tests {
     }
 
     #[test]
-    fn the_test_line_names_the_bounds_in_their_model_and_an_edited_preset_as_such() {
-        let gainer = SprtBundle::Gainer.defaults();
-        let preset = SprtDesign::new(gainer, 100, Some(SprtBundle::Gainer)).unwrap();
-        assert_eq!(
-            sprt_test_line(preset),
-            "nElo [0.00, 5.00], alpha 0.05, beta 0.05 (preset gainer)"
-        );
-
-        let narrowed = SprtParameters {
-            elo1: 3.0,
-            ..gainer
+    fn the_test_line_names_the_bounds_in_their_model() {
+        let normalized = SprtParameters {
+            model: EloModel::Normalized,
+            elo0: 0.0,
+            elo1: 5.0,
+            alpha: 0.05,
+            beta: 0.05,
         };
-        let edited = SprtDesign::new(narrowed, 100, Some(SprtBundle::Gainer)).unwrap();
         assert_eq!(
-            sprt_test_line(edited),
-            "nElo [0.00, 3.00], alpha 0.05, beta 0.05 (preset gainer, overridden)"
+            sprt_test_line(SprtDesign::new(normalized, 100).unwrap()),
+            "nElo [0.00, 5.00], alpha 0.05, beta 0.05"
         );
 
         let logistic = SprtParameters {
@@ -1241,7 +1192,7 @@ mod progress_block_tests {
             alpha: 0.1,
             beta: 0.05,
         };
-        let custom = SprtDesign::new(logistic, 100, None).unwrap();
+        let custom = SprtDesign::new(logistic, 100).unwrap();
         assert_eq!(
             sprt_test_line(custom),
             "Elo [-3.00, 1.00], alpha 0.1, beta 0.05"

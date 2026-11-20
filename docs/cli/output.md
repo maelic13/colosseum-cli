@@ -80,7 +80,7 @@ earlier invocations spent, and the pause between them is not counted.
 ```text
 progress [sprt]: 210/400 games (52%), 8m41s elapsed
   players         candidate vs. baseline
-  test            nElo [0.00, 5.00], alpha 0.05, beta 0.05 (preset gainer)
+  test            nElo [0.00, 5.00], alpha 0.05, beta 0.05
   Elo             +193.1 +/- 45.0
   nElo            +248.0 +/- 47.0
   W/D/L           158/0/52

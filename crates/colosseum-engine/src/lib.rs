@@ -38,8 +38,8 @@ pub use colosseum_uci::Score;
 pub use live::{EvalPoint, LiveGameHandle, LiveGameState, LiveSearch};
 #[cfg(feature = "runner")]
 pub use openings::{
-    MoveCounterSources, OpeningAudit, OpeningError, OpeningList, OpeningSummary, ResolvedOpening,
-    audit_opening_book, fen_after, is_chess960_fen, load_openings, load_openings_named, summarize,
+    MoveCounterSources, OpeningAudit, OpeningError, OpeningList, ResolvedOpening,
+    audit_opening_book, fen_after, is_chess960_fen, load_openings, load_openings_named,
 };
 #[cfg(feature = "runner")]
 pub use pgn::GamePairIdentity;

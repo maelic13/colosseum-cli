@@ -1,11 +1,12 @@
 //! `spsa read` against the engine projects' reference reader on five
-//! recorded tunes (PLAN 12.11; `docs/architecture/spsa-read-definitions.md`).
+//! recorded tunes (`docs/architecture/spsa-read-definitions.md`).
 //!
 //! Each fixture is a finished Basilisk tune reduced by
 //! `tools/spsa_read_fixtures.py` to its schedule, starting centres and
 //! scores, with the reference's figures at the pinned revision. The centres
 //! are re-derived with the runner's own update and must be the recorded ones
-//! exactly, read with exact float parsing as the CLI reads them; every
+//! to within [`REPLAY_TOLERANCE`], read with exact float parsing as the CLI
+//! reads them; every
 //! deterministic figure must agree with the reference at its
 //! rounding; the null SDs, drawn from the CLI's own stream, must agree with
 //! the reference's within sampling error and with the values committed here.
@@ -15,6 +16,14 @@ use colosseum_core::spsa_read::{
 };
 use colosseum_core::{SpsaKnob, SpsaScheduleArtifact, prepare_iteration, update_centers};
 use serde_json::Value;
+
+/// How far, in unit moves, the re-derived centres may be from the recorded
+/// ones. The tunes were played on Windows; another platform's `powf` may
+/// round a schedule coefficient differently in its last bit, which moves a
+/// centre by about `1e-14` of a unit move. A misread score or sign moves it by
+/// a whole one. The CLI's own integrity check allows `MOVE_TOLERANCE`, 1,000
+/// times this.
+const REPLAY_TOLERANCE: f64 = 1e-9;
 
 const FIXTURES: [(&str, &str); 5] = [
     (
@@ -148,8 +157,8 @@ fn fixture(text: &str) -> Fixture {
         worst = worst.max(deviation);
     }
     assert!(
-        worst == 0.0,
-        "the runner's update does not reproduce the recorded centres: {worst:e} of a unit move (tolerance {MOVE_TOLERANCE:e})"
+        worst <= REPLAY_TOLERANCE,
+        "the runner's update does not reproduce the recorded centres: {worst:e} of a unit move (tolerance {REPLAY_TOLERANCE:e}; the CLI's own check allows {MOVE_TOLERANCE:e})"
     );
     Fixture {
         names: artifact
@@ -208,19 +217,7 @@ fn five_recorded_tunes_read_as_the_reference_reads_them() {
         for expected in fixture.reference["reads"].as_array().unwrap() {
             let ours = read_window(&fixture, &expected["window"]);
             let at = |field: &str| format!("{name} {}: {field}", expected["window"]);
-            agrees(
-                &at("line"),
-                ours.familywise_line,
-                &expected["familywise_line"],
-                4,
-            );
             agrees(&at("max |z|"), ours.max_abs_z, &expected["max_abs_z"], 4);
-            assert_eq!(
-                serde_json::json!(ours.over_line),
-                expected["over_line"],
-                "{}",
-                at("over the line")
-            );
             agrees(&at("excess"), ours.excess, &expected["excess"], 3);
             agrees(
                 &at("excess SD"),
@@ -228,16 +225,9 @@ fn five_recorded_tunes_read_as_the_reference_reads_them() {
                 &expected["excess_sd"],
                 3,
             );
-            assert_eq!(ours.live, expected["live"], "{}", at("live"));
-            agrees(
-                &at("floor"),
-                ours.quiet_rules_out.coordinate_elo,
-                &expected["coordinate_elo"],
-                2,
-            );
             agrees(
                 &at("SE"),
-                ours.quiet_rules_out.coordinate_se_elo,
+                ours.coordinate_se_elo,
                 &expected["coordinate_se_elo"],
                 3,
             );
@@ -253,28 +243,39 @@ fn five_recorded_tunes_read_as_the_reference_reads_them() {
                 &expected["gain_window"],
                 2,
             );
-            match (&ours.forecast, expected["forecast"].as_object()) {
-                (Some(forecast), Some(reference)) => {
-                    assert_eq!(
-                        serde_json::json!(forecast.span),
-                        reference["segment"],
-                        "{}",
-                        at("forecast span")
-                    );
-                    agrees(&at("forecast"), forecast.elo, &reference["elo"], 2);
-                    agrees(&at("forecast SD"), forecast.sd, &reference["sd"], 2);
-                    agrees(
-                        &at("forecast floor"),
-                        ours.quiet_rules_out.forecast_two_sd_elo.unwrap(),
-                        &expected["forecast_two_sd_elo"],
-                        2,
-                    );
-                }
-                (None, None) => assert!(expected["forecast_two_sd_elo"].is_null()),
-                (ours, reference) => panic!("{}: {ours:?} against {reference:?}", at("forecast")),
-            }
+            // The read states no verdict; a project applying the reference's
+            // own lines to its figures reaches the reference's verdicts.
+            let line = expected["familywise_line"].as_f64().unwrap();
+            let over = ours
+                .coordinates
+                .iter()
+                .filter(|coordinate| coordinate.z.abs() >= line)
+                .map(|coordinate| coordinate.name.as_str())
+                .collect::<Vec<_>>();
             assert_eq!(
-                serde_json::json!(ours.rails),
+                serde_json::json!(over),
+                expected["over_line"],
+                "{}",
+                at("over the line")
+            );
+            let excess_line = 2.0 * (2.0 * ours.coordinate_count as f64).sqrt();
+            assert_eq!(
+                !over.is_empty() || ours.excess >= excess_line,
+                expected["live"],
+                "{}",
+                at("live")
+            );
+            let rails = ours
+                .coordinates
+                .iter()
+                .filter(|coordinate| {
+                    coordinate.distance_to_bound <= coordinate.perturbation
+                        && coordinate.outward_z >= line
+                })
+                .map(|coordinate| coordinate.name.as_str())
+                .collect::<Vec<_>>();
+            assert_eq!(
+                serde_json::json!(rails),
                 expected["rails"],
                 "{}",
                 at("rails")
@@ -298,7 +299,6 @@ fn five_recorded_tunes_read_as_the_reference_reads_them() {
                     &theirs["arm_clamped_share"],
                     5,
                 );
-                assert_eq!(mine.rail, theirs["rail"], "{}", label("rail"));
             }
         }
     }

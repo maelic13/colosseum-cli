@@ -5,7 +5,7 @@ test between two ordinary UCI executables. Every design names its Elo model,
 ordered hypotheses, error probabilities and maximum number of complete
 colour-reversed pairs.
 
-An explicit custom design supplies every statistical field:
+Every design supplies every statistical field; none is assumed:
 
 ```text
 colosseum-cli sprt ./candidate ./baseline \
@@ -17,23 +17,19 @@ colosseum-cli sprt ./candidate ./baseline \
 the model is never inferred. The cap is mandatory. Reaching it without either
 Wald boundary is an inconclusive result, not acceptance of H0.
 
-Two named convenience bundles establish ordinary starting values:
-
-| Preset | Model | `elo0` | `elo1` | `alpha` | `beta` | Meaning |
-|---|---:|---:|---:|---:|---:|---|
-| `gainer` | normalized | 0 | 5 | 0.05 | 0.05 | H1 supports a material gain |
-| `simplify` | normalized | -5 | 0 | 0.05 | 0.05 | H1 supports non-regression within the chosen margin |
-
-Use them with `--preset gainer` or `--preset simplify`. They are transparent
-bundles rather than hidden modes: `--model`, `--elo0`, `--elo1`, `--alpha` and
-`--beta` may override any bundled value, and the complete resolved design plus
-its exact Wald bounds is stored and reported.
+The bounds are your project's choice, and so is what they mean: a gain
+test commonly asks whether H1 supports a material gain, such as nElo
+`[0, 5]`, and a simplification whether it is no weaker within a margin,
+such as nElo `[-5, 0]`, both at 5% error rates. Keep a project's designs in
+a run file beside its engine rather than retyping them. The complete
+resolved design and its exact Wald bounds are stored and reported.
 
 A completed SPSA result can supply both gate arms directly:
 
 ```text
 colosseum-cli sprt --apply path/to/spsa-run/result.json \
-  --max-pairs 10000 --preset gainer
+  --max-pairs 10000 --model normalized \
+  --elo0 0 --elo1 5 --alpha 0.05 --beta 0.05
 ```
 
 No positional engines or per-side launch/UCI overrides are accepted in this
@@ -67,8 +63,7 @@ Progress is written to stderr every `--progress-every N` official games
 are played and committed as colour-reversed pairs is how the test is set up,
 and `--max-pairs 200` caps it at 400 games. An SPRT block carries the whole
 decision: the two engines, the test itself (the Elo bounds of its two
-hypotheses in the model they are measured in, alpha and beta, and the preset
-it came from, marked overridden when any of its values was changed — the same
+hypotheses in the model they are measured in, alpha and beta — the same
 line is printed once when the run starts), logistic and normalized
 Elo each with the half-width of its 95% interval, W/D/L, the pentanomial
 vector, engine faults and time losses, the LLR against its exact Wald bounds,

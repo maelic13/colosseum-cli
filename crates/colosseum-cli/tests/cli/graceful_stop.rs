@@ -154,8 +154,16 @@ fn an_sprt_stops_cleanly_without_claiming_a_verdict_and_resumes() {
     let expected = json(
         command
             .args([
-                "--preset",
-                "gainer",
+                "--model",
+                "normalized",
+                "--elo0",
+                "0",
+                "--elo1",
+                "5",
+                "--alpha",
+                "0.05",
+                "--beta",
+                "0.05",
                 "--max-pairs",
                 "2",
                 "--max-engine-faults",
@@ -181,8 +189,16 @@ fn an_sprt_stops_cleanly_without_claiming_a_verdict_and_resumes() {
     stub_pair(&mut command);
     let stopped = command
         .args([
-            "--preset",
-            "gainer",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
+            "--elo1",
+            "5",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
             "--max-pairs",
             "2",
             "--max-engine-faults",
@@ -210,8 +226,16 @@ fn an_sprt_stops_cleanly_without_claiming_a_verdict_and_resumes() {
     let resumed = json(
         command
             .args([
-                "--preset",
-                "gainer",
+                "--model",
+                "normalized",
+                "--elo0",
+                "0",
+                "--elo1",
+                "5",
+                "--alpha",
+                "0.05",
+                "--beta",
+                "0.05",
                 "--max-pairs",
                 "2",
                 "--max-engine-faults",

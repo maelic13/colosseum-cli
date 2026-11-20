@@ -30,8 +30,7 @@ pub use game::{GameResult, GameStats, Pairing, Termination};
 pub use ids::{EngineId, GameId, PairId, ParticipantId, RunId, UnitId};
 pub use intervals::{ScoreElo, TRINOMIAL_Z, logistic_elo, trinomial_elo};
 pub use options::{
-    UciOption, UciOptionValue, is_chess960_option, is_hash_option, is_tablebase_option,
-    is_thread_option, is_uci_true,
+    UciOption, UciOptionValue, is_chess960_option, is_hash_option, is_thread_option, is_uci_true,
 };
 pub use pairing::{gauntlet, round_robin};
 pub use rating::{ml_ratings, ml_ratings_anchored, performance_rating, rating_error};
@@ -52,8 +51,8 @@ pub use stats::{
     EloEstimate, EloModel, FixedNAchievedResolution, FixedNPlan, FixedNTestTails,
     NormalizedEloEstimate, PentanomialBin, PentanomialDistribution, PentanomialSprtResult,
     PentanomialStatistics, PentanomialVector, STATS_VERSION, SprtDecision, SprtResult,
-    StatisticsError, elo_with_error, fixed_n_achieved_resolution, fixed_n_plan, inverse_normal_cdf,
-    los, pentanomial_sprt, pentanomial_statistics, sprt, sprt_wald_bounds,
+    StatisticsError, elo_with_error, fixed_n_achieved_resolution, fixed_n_plan, los,
+    pentanomial_sprt, pentanomial_statistics, sprt, sprt_wald_bounds,
 };
 pub use time::TimeControl;
 pub use tournament::{Format, OpeningBook, OpeningFormat, OpeningOrder};

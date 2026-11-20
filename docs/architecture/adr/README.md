@@ -1,7 +1,7 @@
 # Architecture decision records
 
 These records make the consequential decisions from
-[`target-architecture.md`](../target-architecture.md) binding before the CLI
+`target-architecture.md` (in the repository's history at `56cbd00`) binding before the CLI
 boundary migration begins. An accepted ADR may be changed only by a later ADR
 that supersedes it; edits that merely clarify wording must not change the
 decision.
@@ -22,9 +22,9 @@ decision.
 | [0012](0012-names-and-repositories-after-the-split.md) | Accepted; revised and carried out 2026-11-14 | Keep Colosseum for the desktop application and `colosseum-cli` for the CLI; the swap done at the split (this repository is `maelic13/colosseum-cli`, the desktop one `maelic13/colosseum`); plain `v` tags in both, the CLI's `cli-v` releases re-tagged |
 
 Phase 0.5's detailed release and CI design is in
-[`release-architecture.md`](../release-architecture.md).
+`release-architecture.md` (in the repository's history at `56cbd00`).
 Phase 0.6's collision research and rejected public-name proposal are in
-[`naming-decision.md`](../naming-decision.md).
+`naming-decision.md` (in the repository's history at `56cbd00`).
 The Phase 0.7 cross-document and module-ownership review is in
 [`phase-0-review.md`](../phase-0-review.md).
 Phase 0.8's implementation identity and optional Phase 9.0 naming gate are in

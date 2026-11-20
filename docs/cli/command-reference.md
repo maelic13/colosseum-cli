@@ -348,20 +348,15 @@ Options:
       --unset-run-option <LONG_NAME>
           Remove one inherited run-file option before applying CLI arguments
 
-      --preset <PRESET>
-          Named starting design; every field remains overridable
+      --model <MODEL>
+          Elo parameterization used by both hypotheses and the LLR
 
-          [possible values: gainer, simplify]
+          [possible values: normalized, logistic]
 
       --stop-grace-secs <SECONDS>
           Seconds a game in flight may take to finish after an interrupt asks a durable run to stop; a second interrupt abandons it at once
 
           [default: 30]
-
-      --model <MODEL>
-          Elo parameterization used by both hypotheses and the LLR
-
-          [possible values: normalized, logistic]
 
       --elo0 <ELO0>
           Null-hypothesis Elo in the selected model
@@ -575,9 +570,9 @@ Usage: colosseum-cli spsa [OPTIONS] [EXECUTABLE]
 
 Commands:
   plan     Report the exact gain schedule and factual workload without launching an engine
-  status   Read the last durable tune snapshot and report labelled trajectory heuristics
+  status   Read the last durable tune snapshot and report each knob's trajectory
   history  Print the centre vector after every completed iteration, rebuilt from the journal without changing the run; works while the tune runs
-  read     Read whether the tune still has gradient: each knob's z over a window, the familywise and excess lines, the cross-fitted gain with its sign-randomised null, a forecast and rails; read-only, safe while the tune runs
+  read     Report the figures that say whether the tune still has gradient: each knob's z over a window, the excess, the cross-fitted gain with its sign-randomised null, and each knob's push toward its nearer bound; no verdict. Read-only, safe while the tune runs
   help     Print this message or the help of the given subcommand(s)
 
 Arguments:
@@ -837,7 +832,7 @@ Options:
 ## `colosseum-cli spsa status`
 
 ```text
-Read the last durable tune snapshot and report labelled trajectory heuristics
+Read the last durable tune snapshot and report each knob's trajectory
 
 Usage: colosseum-cli spsa status [OPTIONS] <RUN_DIRECTORY>
 
@@ -909,7 +904,7 @@ Options:
 ## `colosseum-cli spsa read`
 
 ```text
-Read whether the tune still has gradient: each knob's z over a window, the familywise and excess lines, the cross-fitted gain with its sign-randomised null, a forecast and rails; read-only, safe while the tune runs
+Report the figures that say whether the tune still has gradient: each knob's z over a window, the excess, the cross-fitted gain with its sign-randomised null, and each knob's push toward its nearer bound; no verdict. Read-only, safe while the tune runs
 
 Usage: colosseum-cli spsa read [OPTIONS] <RUN_DIRECTORY>
 
@@ -955,21 +950,6 @@ Options:
           Seconds a game in flight may take to finish after an interrupt asks a durable run to stop; a second interrupt abandons it at once
 
           [default: 30]
-
-      --forecast-span <FORECAST_SPAN>
-          Iterations the forecast covers after the window; 0 turns it off
-
-          [default: 2000]
-
-      --family-alpha <FAMILY_ALPHA>
-          Family alpha of the familywise line
-
-          [default: 0.05]
-
-      --excess-sd <EXCESS_SD>
-          The excess's line, in units of its null SD
-
-          [default: 2]
 
   -h, --help
           Print help

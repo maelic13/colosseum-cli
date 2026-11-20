@@ -7,12 +7,14 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
-- `spsa read <run-dir>` reads whether a tune still has gradient, without
-  changing it and while it runs: each knob's `z` over a window (the last
-  1,000 iterations by default), the familywise and excess lines and whether
-  the window is live or quiet, the cross-fitted gain since iteration 0 and in
-  the window with sign-randomised null SDs, an upper-bound forecast, rails
-  and the run's faults; `--json` under schema `colosseum-spsa-read-v1`. It
+- `spsa read <run-dir>` reports the figures that say whether a tune still
+  has gradient, without changing it and while it runs: each knob's `z` over a
+  window (the last 1,000 iterations by default), the largest `|z|` and the
+  excess `Σ z² − n`, the cross-fitted gain since iteration 0 and in the
+  window with sign-randomised null SDs, each knob's push toward its nearer
+  bound, and the run's faults; `--json` under schema
+  `colosseum-spsa-read-v1`. It states no verdict: the lines you read the
+  figures against are yours. It
   checks the journal's replay against the run's recorded centres first. It
   relies on the tune's sign stream (`spsa-perturbations`, draw `k × n + i`,
   odd is `+1`) and gain schedule (`c_k = c0 / (k+1)^0.102`,
@@ -51,7 +53,21 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   time by move number sees the real one, and the 50-move rule counts from
   the book's clock
 
+### Removed
+- `sprt --preset gainer|simplify`. A test states its model, both hypotheses
+  and both error rates (`--model normalized --elo0 0 --elo1 5 --alpha 0.05
+  --beta 0.05` is what `gainer` was); keep a project's designs in a run
+  file. An interrupted SPRT run started with a preset is refused on resume;
+  one started without resumes as before
+
 ### Changed
+- `spsa status` reports figures in place of its observed / not-observed
+  heuristics: each knob's share of centres on a bound, its net movement and
+  the latest third's span as shares of the range, beside its perturbation.
+  The thresholds it compared them with (20%, 1%, 1% and a perturbation of
+  0.5) are gone; JSON status is schema version 2, with the figures in
+  `bound_contact_share`, `net_movement_share_of_range` and
+  `latest_third_span_share_of_range`
 - `book slice` writes whole FENs, move counters included, so a shard plays
   as its book does; it wrote the four EPD fields alone
 - A run from an EPD book records where its positions' move counters came

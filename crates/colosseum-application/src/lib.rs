@@ -36,7 +36,7 @@ pub use nps::{
 };
 pub use pair_commit::{CompletePair, PairCommitError, PairCommitQueue};
 pub use ports::*;
-pub use sprt::{SprtBundle, SprtDesign, SprtDesignError, SprtParameters};
+pub use sprt::{SprtDesign, SprtDesignError, SprtParameters};
 pub use spsa::{
     DEFAULT_SPSA_GAMES_PER_ITERATION, DEFAULT_SPSA_ITERATIONS, SPSA_TUNE_RESULT_SCHEMA_VERSION,
     SpsaBoundParameter, SpsaBoundTune, SpsaCenterSample, SpsaCommittedUpdate,
@@ -52,9 +52,7 @@ pub use spsa_plan::{
     SpsaWaveShape, plan_spsa, spsa_wave_shape,
 };
 pub use spsa_status::{
-    SPSA_DIAGNOSTIC_MIN_HISTORY, SPSA_FREQUENT_BOUND_CONTACT_FRACTION,
-    SPSA_LITTLE_MOVEMENT_RANGE_FRACTION, SPSA_RECENT_STABILITY_RANGE_FRACTION,
-    SPSA_STATUS_SCHEMA_VERSION, SpsaEta, SpsaHeuristic, SpsaHeuristicState, SpsaKnobDiagnostics,
+    SPSA_DIAGNOSTIC_MIN_HISTORY, SPSA_STATUS_SCHEMA_VERSION, SpsaEta, SpsaKnobDiagnostics,
     SpsaStatusError, SpsaStatusReport, SpsaStopPointEta, SpsaThirdSummary, SpsaThirdsComparison,
     SpsaTrajectoryPoint, diagnose_spsa,
 };

@@ -660,13 +660,6 @@ fn shuffle<T>(items: &mut [T], seed: u64) {
     }
 }
 
-/// Quick metadata for the GUI preview without retaining every opening.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OpeningSummary {
-    pub count: usize,
-    pub first_label: Option<String>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpeningAudit {
     pub format: String,
@@ -708,15 +701,6 @@ pub fn audit_opening_book(book: &OpeningBook) -> Result<OpeningAudit, OpeningErr
         candidates: validity.len(),
         usable: validity.iter().filter(|valid| **valid).count(),
         rejected_indices,
-    })
-}
-
-/// Load a book only to report how many openings it yields and a sample label.
-pub fn summarize(book: &OpeningBook) -> Result<OpeningSummary, OpeningError> {
-    let openings = load_openings(book)?;
-    Ok(OpeningSummary {
-        count: openings.len(),
-        first_label: (!openings.is_empty()).then(|| openings.label(0).to_owned()),
     })
 }
 

@@ -1,6 +1,6 @@
-//! `spsa read`: whether a tune still has gradient, read from the run
-//! directory without changing it (PLAN 12.11;
-//! `docs/architecture/spsa-read-definitions.md`).
+//! `spsa read`: the figures that say whether a tune still has gradient,
+//! read from the run directory without changing it
+//! (`docs/architecture/spsa-read-definitions.md`). It states no verdict.
 
 use super::*;
 
@@ -29,15 +29,6 @@ pub(crate) struct SpsaReadCommand {
     /// Iterations per segment of the cross-fitted gain read.
     #[arg(long, default_value_t = 500, value_parser = clap::value_parser!(u32).range(2..))]
     pub(crate) gain_segment: u32,
-    /// Iterations the forecast covers after the window; 0 turns it off.
-    #[arg(long, default_value_t = 2_000)]
-    pub(crate) forecast_span: u32,
-    /// Family alpha of the familywise line.
-    #[arg(long, default_value_t = 0.05)]
-    pub(crate) family_alpha: f64,
-    /// The excess's line, in units of its null SD.
-    #[arg(long, default_value_t = 2.0)]
-    pub(crate) excess_sd: f64,
 }
 
 /// A read as `spsa read` reports it: the core's read, and the run's own
@@ -152,9 +143,6 @@ pub(crate) fn run_spsa_read(command: &SpsaReadCommand, machine: bool) -> ExitCod
         null_reps: command.null_reps,
         null_seed: command.null_seed,
         gain_segment: command.gain_segment,
-        forecast_span: command.forecast_span,
-        family_alpha: command.family_alpha,
-        excess_sd: command.excess_sd,
     };
     let read = match read(&run, options) {
         Ok(read) => read,
@@ -280,29 +268,12 @@ pub(crate) fn spsa_read_text(report: &SpsaReadReport, run_directory: &Path) -> S
             report.run_status
         ),
         format!(
-            "  {} coordinates; familywise line {:.2} (family alpha {}); max |z| {:.2}; over the line: {}",
+            "  {} coordinates; max |z| {:.2}; sum z^2 - n = {:+.1} ({:+.1} SD); SE {:.2} Elo across a perturbation",
             read.coordinate_count,
-            read.familywise_line,
-            read.family_alpha,
             read.max_abs_z,
-            list_or_none(&read.over_line)
-        ),
-        format!(
-            "  sum z^2 - n = {:+.1} ({:+.1} SD; line {} SD); {}",
             read.excess,
             read.excess_in_sd,
-            read.excess_line_sd,
-            if read.live { "LIVE" } else { "quiet" }
-        ),
-        format!(
-            "  quiet rules out: no coordinate above {:.1} Elo across a perturbation (SE {:.2}){}",
-            read.quiet_rules_out.coordinate_elo,
-            read.quiet_rules_out.coordinate_se_elo,
-            read.quiet_rules_out
-                .forecast_two_sd_elo
-                .map_or_else(String::new, |floor| format!(
-                    "; the forecast's 2 SD is {floor:.1} Elo"
-                ))
+            read.coordinate_se_elo
         ),
         format!(
             "  gain since iteration 0: {:+.1} Elo (null SD {:.1}); in the window: {:+.1} Elo (null SD {:.1}); {} sign-randomised re-draws, seed {}",
@@ -312,18 +283,6 @@ pub(crate) fn spsa_read_text(report: &SpsaReadReport, run_directory: &Path) -> S
             read.gain.window.null_sd,
             read.gain.null_reps,
             read.gain.null_seed
-        ),
-        match &read.forecast {
-            Some(forecast) => format!(
-                "  forecast for iterations {}-{}: at most {:+.1} +/- {:.1} Elo (an upper bound)",
-                forecast.span[0], forecast.span[1], forecast.elo, forecast.sd
-            ),
-            None => "  forecast: none".to_owned(),
-        },
-        format!(
-            "  rails: {}; arms clamped on over 1% of iterations: {}",
-            list_or_none(&read.rails),
-            list_or_none(&read.clamped_over_one_percent)
         ),
         format!("  faults: {}", fault_text(&report.faults)),
         format!(
@@ -335,7 +294,7 @@ pub(crate) fn spsa_read_text(report: &SpsaReadReport, run_directory: &Path) -> S
                 report.integrity.compared.join(" and ")
             }
         ),
-        "  coordinates by |z| (z, Elo across one perturbation, centre, start, value, clamp share):"
+        "  coordinates by |z| (z, Elo across one perturbation, centre, start, value, clamp share, outward z, distance to the nearer bound):"
             .to_owned(),
     ];
     let mut coordinates = read.coordinates.iter().collect::<Vec<_>>();
@@ -347,7 +306,7 @@ pub(crate) fn spsa_read_text(report: &SpsaReadReport, run_directory: &Path) -> S
         .unwrap_or(0);
     for coordinate in coordinates {
         lines.push(format!(
-            "    {:width$}  z {:+6.2}  {:+7.2} Elo  {:12.4}  {:12.4}  {:>8}  {:5.1}%{}",
+            "    {:width$}  z {:+6.2}  {:+7.2} Elo  {:12.4}  {:12.4}  {:>8}  {:5.1}%  {:+6.2}  {:.4}",
             coordinate.name,
             coordinate.z,
             coordinate.elo_across_perturbation,
@@ -355,18 +314,11 @@ pub(crate) fn spsa_read_text(report: &SpsaReadReport, run_directory: &Path) -> S
             coordinate.start,
             coordinate.value,
             coordinate.clamp_share * 100.0,
-            if coordinate.rail { "  RAIL" } else { "" }
+            coordinate.outward_z,
+            coordinate.distance_to_bound
         ));
     }
     lines.join("\n") + "\n"
-}
-
-fn list_or_none(names: &[String]) -> String {
-    if names.is_empty() {
-        "none".to_owned()
-    } else {
-        names.join(", ")
-    }
 }
 
 fn fault_text(faults: &MatchFaultCounts) -> String {

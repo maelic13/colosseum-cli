@@ -850,37 +850,50 @@ fn calibration_is_invalid_only_past_its_engine_fault_allowance() {
     );
 }
 
+/// A test states its whole design: there are no named presets.
 #[test]
-fn sprt_named_bundles_expand_to_explicit_finite_designs() {
-    for (preset, elo0, elo1) in [("gainer", 0.0, 5.0), ("simplify", -5.0, 0.0)] {
-        let output = cli()
-            .args([
-                "sprt",
-                "a",
-                "b",
-                "--max-pairs",
-                "1000",
-                "--preset",
-                preset,
-                "--dry-run",
-                "--json",
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success());
-        assert!(output.stderr.is_empty());
-        let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let design = &value["resolved_configuration"]["design"];
-        assert_eq!(design["parameters"]["model"], "normalized");
-        assert_eq!(design["parameters"]["elo0"], elo0);
-        assert_eq!(design["parameters"]["elo1"], elo1);
-        assert_eq!(design["parameters"]["alpha"], 0.05);
-        assert_eq!(design["parameters"]["beta"], 0.05);
-        assert_eq!(design["max_pairs"], 1000);
-        assert!(design["lower_bound"].as_f64().unwrap() < 0.0);
-        assert!(design["upper_bound"].as_f64().unwrap() > 0.0);
-    }
+fn sprt_has_no_presets_and_states_its_whole_design() {
+    let refused = cli()
+        .args(["sprt", "a", "b", "--max-pairs", "1000"])
+        .args(DESIGN)
+        .args(["--preset", "gainer", "--dry-run"])
+        .output()
+        .unwrap();
+    assert_eq!(refused.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&refused.stderr).contains("--preset"));
+
+    let output = cli()
+        .args(["sprt", "a", "b", "--max-pairs", "1000"])
+        .args(DESIGN)
+        .args(["--dry-run", "--json"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let design = &value["resolved_configuration"]["design"];
+    assert_eq!(design["parameters"]["model"], "normalized");
+    assert_eq!(design["parameters"]["elo1"], 5.0);
+    // The retired field stays null, so a design hashes as it always has.
+    assert!(design["bundle"].is_null(), "{design}");
+    assert!(
+        design.as_object().unwrap().contains_key("bundle"),
+        "{design}"
+    );
 }
+
+/// A normalized design of nElo 0 against 5 at 5% error rates.
+const DESIGN: [&str; 10] = [
+    "--model",
+    "normalized",
+    "--elo0",
+    "0",
+    "--elo1",
+    "5",
+    "--alpha",
+    "0.05",
+    "--beta",
+    "0.05",
+];
 
 #[test]
 fn sprt_custom_design_requires_and_reports_every_statistical_input() {
@@ -927,10 +940,16 @@ fn sprt_refuses_missing_or_invalid_design_before_launch() {
             "b",
             "--max-pairs",
             "10",
-            "--preset",
-            "gainer",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
             "--elo1",
             "0",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
             "--dry-run",
         ],
     ] {
@@ -957,8 +976,16 @@ fn sprt_live_report_is_pair_atomic_durable_and_inconclusive_at_its_cap() {
         .args([
             "--max-pairs",
             "2",
-            "--preset",
-            "gainer",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
+            "--elo1",
+            "5",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
             "--max-engine-faults",
             "4",
             "--seed",
@@ -1016,7 +1043,21 @@ fn sprt_live_exit_distinguishes_invalid_and_infrastructure_error() {
         .arg("sprt")
         .arg(fixture)
         .arg(fixture)
-        .args(["--max-pairs", "10", "--preset", "gainer", "--dir"])
+        .args([
+            "--max-pairs",
+            "10",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
+            "--elo1",
+            "5",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
+            "--dir",
+        ])
         .arg(root.path().join("invalid"))
         .arg("--json")
         .output()
@@ -1042,8 +1083,16 @@ fn sprt_live_exit_distinguishes_invalid_and_infrastructure_error() {
         .args([
             "--max-pairs",
             "10",
-            "--preset",
-            "gainer",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
+            "--elo1",
+            "5",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
             "--max-engine-faults",
             "0",
             "--dir",
@@ -1063,8 +1112,16 @@ fn sprt_live_exit_distinguishes_invalid_and_infrastructure_error() {
             "missing-b",
             "--max-pairs",
             "2",
-            "--preset",
-            "gainer",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
+            "--elo1",
+            "5",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
             "--dir",
         ])
         .arg(root.path().join("error"))
@@ -1325,8 +1382,16 @@ fn ponder_is_explicit_recorded_and_limited_to_clock_controls() {
             "missing-b",
             "--max-pairs",
             "1",
-            "--preset",
-            "gainer",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
+            "--elo1",
+            "5",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
             "--ponder",
             "--cores-per-engine",
             "1",

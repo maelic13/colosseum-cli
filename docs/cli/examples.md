@@ -10,7 +10,7 @@ use `--dry-run --json` before a costly live workflow.
 | `engine inspect` | `colosseum-cli engine inspect ./engine` |
 | `engine check` | `colosseum-cli engine check ./engine --option Hash=64` |
 | `match` | `colosseum-cli match ./candidate ./baseline --games 100 --a-movetime-ms 100 --b-movetime-ms 100` |
-| `sprt` | `colosseum-cli sprt ./candidate ./baseline --max-pairs 5000 --preset gainer` |
+| `sprt` | `colosseum-cli sprt ./candidate ./baseline --max-pairs 5000 --model normalized --elo0 0 --elo1 5 --alpha 0.05 --beta 0.05` |
 | `calibrate` | `colosseum-cli calibrate ./engine ./engine-copy --games 100 --a-movetime-ms 100 --b-movetime-ms 100` |
 | `spsa` | `colosseum-cli spsa ./engine --tune ./tune.toml --r-end 0.002 --iterations 100 --games-per-iteration 8` |
 | `spsa plan` | `colosseum-cli spsa plan --tune ./tune.toml --r-end 0.002 --pilot-game-seconds 3.2 --pilot-game-seconds 3.6` |
@@ -34,5 +34,5 @@ use `--dry-run --json` before a costly live workflow.
 An SPSA result can also define an exact gate without copying its option vector:
 
 ```text
-colosseum-cli sprt --apply ./runs/tune/result.json --max-pairs 5000 --preset gainer
+colosseum-cli sprt --apply ./runs/tune/result.json --max-pairs 5000 --model normalized --elo0 0 --elo1 5 --alpha 0.05 --beta 0.05
 ```

@@ -8,7 +8,7 @@ use std::path::Path;
 use std::process::Command;
 
 use colosseum_core::{OpeningBook, OpeningFormat, OpeningOrder};
-use colosseum_engine::summarize;
+use colosseum_engine::load_openings;
 
 /// The committed specimen of the writer form. Freezing it means a change to
 /// the comment shape has to be a deliberate edit here, not a silent drift that
@@ -99,17 +99,10 @@ fn the_workspace_pgn_reader_still_reads_the_frozen_fixture_as_openings() {
         count: None,
         seed: 0,
     };
-    let summary = summarize(&book).unwrap();
-    assert_eq!(summary.count, 2);
+    let openings = load_openings(&book).unwrap();
+    assert_eq!(openings.len(), 2);
     // Comments never leak into the replayed opening line.
-    assert!(
-        !summary
-            .first_label
-            .clone()
-            .unwrap_or_default()
-            .contains('{'),
-        "{summary:?}"
-    );
+    assert!(!openings.label(0).contains('{'), "{}", openings.label(0));
 }
 
 /// A run directory is one evidence set: the checkpoint is the authority for

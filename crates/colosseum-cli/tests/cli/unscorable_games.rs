@@ -232,7 +232,21 @@ fn an_old_spsa_result_is_refused_by_its_version_and_not_by_a_field() {
     let output = cli()
         .arg("sprt")
         .args(["--apply".as_ref(), path.as_os_str()])
-        .args(["--max-pairs", "4", "--preset", "gainer", "--json"])
+        .args([
+            "--max-pairs",
+            "4",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
+            "--elo1",
+            "5",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
+            "--json",
+        ])
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(2));

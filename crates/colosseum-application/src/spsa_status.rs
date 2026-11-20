@@ -6,30 +6,8 @@ use thiserror::Error;
 
 use crate::{SpsaBoundTune, SpsaCenterSample, SpsaRunSettings, SpsaRunSettingsError};
 
-pub const SPSA_STATUS_SCHEMA_VERSION: u32 = 1;
+pub const SPSA_STATUS_SCHEMA_VERSION: u32 = 2;
 pub const SPSA_DIAGNOSTIC_MIN_HISTORY: usize = 6;
-pub const SPSA_FREQUENT_BOUND_CONTACT_FRACTION: f64 = 0.20;
-pub const SPSA_LITTLE_MOVEMENT_RANGE_FRACTION: f64 = 0.01;
-pub const SPSA_RECENT_STABILITY_RANGE_FRACTION: f64 = 0.01;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum SpsaHeuristicState {
-    Observed,
-    NotObserved,
-    InsufficientHistory,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SpsaHeuristic {
-    pub state: SpsaHeuristicState,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metric: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub threshold: Option<f64>,
-    pub observation: String,
-    pub caveat: String,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SpsaTrajectoryPoint {
@@ -67,10 +45,15 @@ pub struct SpsaKnobDiagnostics {
     pub current_perturbation: f64,
     pub trajectory: Vec<SpsaTrajectoryPoint>,
     pub thirds: SpsaThirdsComparison,
-    pub frequent_bound_contact: SpsaHeuristic,
-    pub little_net_movement: SpsaHeuristic,
-    pub recent_stability: SpsaHeuristic,
-    pub dead_perturbation: SpsaHeuristic,
+    /// The share of completed centres exactly on either bound; absent
+    /// before the first iteration.
+    pub bound_contact_share: Option<f64>,
+    /// How far the centre has moved from its initial value, as a share of
+    /// the range.
+    pub net_movement_share_of_range: f64,
+    /// The span of the latest third of the centres, as a share of the range;
+    /// absent before [`SPSA_DIAGNOSTIC_MIN_HISTORY`] iterations.
+    pub latest_third_span_share_of_range: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -176,10 +159,7 @@ pub fn diagnose_spsa(
                     });
                 }
             }
-            let current = values
-                .last()
-                .copied()
-                .unwrap_or(parameter.initial as f64);
+            let current = values.last().copied().unwrap_or(parameter.initial as f64);
             let trajectory = history
                 .iter()
                 .zip(&values)
@@ -189,35 +169,24 @@ pub fn diagnose_spsa(
                     normalized_to_range: normalize(*value, parameter.min, range),
                 })
                 .collect::<Vec<_>>();
-            let current_perturbation = schedule.schedule.coefficients(
-                coefficient_iteration,
-                schedule.knobs[knob_index].knob()?,
-            )?.c;
-            let enough = values.len() >= SPSA_DIAGNOSTIC_MIN_HISTORY;
+            let current_perturbation = schedule
+                .schedule
+                .coefficients(coefficient_iteration, schedule.knobs[knob_index].knob()?)?
+                .c;
             let contacts = values
                 .iter()
-                .filter(|value| {
-                    **value == parameter.min as f64 || **value == parameter.max as f64
-                })
+                .filter(|value| **value == parameter.min as f64 || **value == parameter.max as f64)
                 .count();
-            let contact_fraction = if values.is_empty() {
-                0.0
-            } else {
-                contacts as f64 / values.len() as f64
-            };
-            let movement = (current - parameter.initial as f64).abs() / range;
-            let recent_start = values.len() * 2 / 3;
-            let recent = &values[recent_start..];
-            let recent_span = if enough {
-                let low = recent.iter().copied().fold(f64::INFINITY, f64::min);
-                let high = recent
-                    .iter()
-                    .copied()
-                    .fold(f64::NEG_INFINITY, f64::max);
-                (high - low) / range
-            } else {
-                0.0
-            };
+            let bound_contact_share =
+                (!values.is_empty()).then(|| contacts as f64 / values.len() as f64);
+            let net_movement_share_of_range = (current - parameter.initial as f64).abs() / range;
+            let latest = &values[values.len() * 2 / 3..];
+            let latest_third_span_share_of_range = (values.len() >= SPSA_DIAGNOSTIC_MIN_HISTORY)
+                .then(|| {
+                    let low = latest.iter().copied().fold(f64::INFINITY, f64::min);
+                    let high = latest.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+                    (high - low) / range
+                });
             Ok(SpsaKnobDiagnostics {
                 name: parameter.name.clone(),
                 initial: parameter.initial,
@@ -228,38 +197,9 @@ pub fn diagnose_spsa(
                 current_perturbation,
                 trajectory,
                 thirds: thirds(history, &values, parameter.min, range),
-                frequent_bound_contact: history_heuristic(
-                    enough,
-                    contact_fraction >= SPSA_FREQUENT_BOUND_CONTACT_FRACTION,
-                    contact_fraction,
-                    SPSA_FREQUENT_BOUND_CONTACT_FRACTION,
-                    "fraction of completed centres exactly on either requested bound",
-                ),
-                little_net_movement: history_heuristic(
-                    enough,
-                    movement <= SPSA_LITTLE_MOVEMENT_RANGE_FRACTION,
-                    movement,
-                    SPSA_LITTLE_MOVEMENT_RANGE_FRACTION,
-                    "absolute movement from the seed, normalized to the requested range",
-                ),
-                recent_stability: history_heuristic(
-                    enough,
-                    recent_span <= SPSA_RECENT_STABILITY_RANGE_FRACTION,
-                    recent_span,
-                    SPSA_RECENT_STABILITY_RANGE_FRACTION,
-                    "span of the most recent third, normalized to the requested range",
-                ),
-                dead_perturbation: SpsaHeuristic {
-                    state: if current_perturbation < 0.5 {
-                        SpsaHeuristicState::Observed
-                    } else {
-                        SpsaHeuristicState::NotObserved
-                    },
-                    metric: Some(current_perturbation),
-                    threshold: Some(0.5),
-                    observation: "current scheduled perturbation compared with the half-unit UCI integer-resolution boundary".into(),
-                    caveat: heuristic_caveat(),
-                },
+                bound_contact_share,
+                net_movement_share_of_range,
+                latest_third_span_share_of_range,
             })
         })
         .collect::<Result<Vec<_>, SpsaStatusError>>()?;
@@ -271,7 +211,7 @@ pub fn diagnose_spsa(
         invalid,
         eta,
         knobs,
-        interpretation: "trajectory signals are descriptive heuristics, not evidence of causation or convergence and never advice to continue or abandon a tune".into(),
+        interpretation: "the figures describe the trajectory; they are not evidence of causation or convergence and never advice to continue or abandon a tune".into(),
     })
 }
 
@@ -393,32 +333,6 @@ fn thirds(
     }
 }
 
-fn history_heuristic(
-    enough: bool,
-    observed: bool,
-    metric: f64,
-    threshold: f64,
-    observation: &str,
-) -> SpsaHeuristic {
-    SpsaHeuristic {
-        state: if !enough {
-            SpsaHeuristicState::InsufficientHistory
-        } else if observed {
-            SpsaHeuristicState::Observed
-        } else {
-            SpsaHeuristicState::NotObserved
-        },
-        metric: enough.then_some(metric),
-        threshold: Some(threshold),
-        observation: observation.into(),
-        caveat: heuristic_caveat(),
-    }
-}
-
-fn heuristic_caveat() -> String {
-    "may reflect the objective, noise, gain schedule, clipping, host variation or an unsuitable range; it is not a causal or convergence claim".into()
-}
-
 fn normalize(value: f64, min: i64, range: f64) -> f64 {
     (value - min as f64) / range
 }
@@ -517,19 +431,12 @@ mod tests {
         assert_eq!(thirds[0].mean, 25.0);
         assert_eq!(thirds[1].mean, 50.5);
         assert_eq!(thirds[2].mean, 51.075);
-        assert_eq!(
-            knob.frequent_bound_contact.state,
-            SpsaHeuristicState::NotObserved
-        );
-        assert_eq!(
-            knob.little_net_movement.state,
-            SpsaHeuristicState::NotObserved
-        );
-        assert_eq!(knob.recent_stability.state, SpsaHeuristicState::Observed);
-        assert_eq!(
-            knob.dead_perturbation.state,
-            SpsaHeuristicState::NotObserved
-        );
+        // One centre of six on the minimum; 1.05 moved from 50 in 100; the
+        // latest third, 51.1 and 51.05, spans 0.05.
+        assert_eq!(knob.bound_contact_share, Some(1.0 / 6.0));
+        assert!((knob.net_movement_share_of_range - 0.0105).abs() < 1e-12);
+        let span = knob.latest_third_span_share_of_range.unwrap();
+        assert!((span - 0.0005).abs() < 1e-12, "{span}");
     }
 
     #[test]
@@ -546,15 +453,13 @@ mod tests {
         .unwrap();
         let knob = &report.knobs[0];
         assert!(knob.thirds.thirds.is_none());
-        assert_eq!(
-            knob.frequent_bound_contact.state,
-            SpsaHeuristicState::InsufficientHistory
-        );
+        assert_eq!(knob.latest_third_span_share_of_range, None);
+        assert_eq!(knob.bound_contact_share, Some(0.0));
         assert!(report.eta.remaining_seconds.is_none());
     }
 
     #[test]
-    fn dead_perturbation_is_observed_without_inventing_advice() {
+    fn a_small_perturbation_is_reported_without_inventing_advice() {
         let report = diagnose_spsa(
             &bound(0.4),
             &schedule(6, 0.4),
@@ -565,10 +470,7 @@ mod tests {
             None,
         )
         .unwrap();
-        assert_eq!(
-            report.knobs[0].dead_perturbation.state,
-            SpsaHeuristicState::Observed
-        );
+        assert!(report.knobs[0].current_perturbation < 0.5);
         assert!(report.interpretation.contains("never advice"));
     }
 

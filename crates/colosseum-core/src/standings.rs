@@ -1,7 +1,7 @@
 //! Live standings aggregation: per-engine W-D-L + points, a head-to-head matrix, and
-//! average nps. Ratings (Elo / Elo Δ) live in [`crate::rating`] and are joined in the
-//! GUI; engine *names* are joined from the engine library. This type only aggregates
-//! game outcomes, so it can be updated incrementally after every finished game.
+//! average nps. Ratings live in [`crate::rating`]; engine names belong to the
+//! caller. This type only aggregates game outcomes, so it can be updated
+//! incrementally after every finished game.
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -292,7 +292,6 @@ impl Standings {
     }
 
     /// Engines ordered by points (descending), breaking ties deterministically by id.
-    /// Name/Elo sorts are applied in the GUI where those values are available.
     #[must_use]
     pub fn ranked_by_points(&self) -> Vec<EngineId> {
         let mut rows: Vec<(EngineId, f64)> = self
