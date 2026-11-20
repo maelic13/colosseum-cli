@@ -148,9 +148,9 @@ above the maximum. JSON rows carry them as `clamped_at_min` and
 `clamped_at_max`, in knob order; the table marks a centre `<N` or `>N`. CSV
 keeps its centres-only shape.
 
-To read whether a tune still has gradient — whether its last iterations
-still say which way each knob should move — read it with `spsa read`, which
-also changes nothing and works while the tune runs:
+To read the figures that say whether a tune still has gradient — whether
+its last iterations still say which way each knob should move — use
+`spsa read`, which also changes nothing and works while the tune runs:
 
 ```text
 colosseum-cli spsa read path/to/spsa-run
@@ -166,30 +166,30 @@ of them, if fewer have completed), and reports:
   arm's wins minus its losses. With no gradient it has mean 0 and variance 1,
   because the tune drew the signs. Beside it, the Elo across one
   perturbation, `695 / (2 × games per iteration)` per unit of mean `D`;
-- the **familywise line** that `n` knobs pass together with probability
-  `--family-alpha` (0.05), the largest `|z|` and the knobs over it, and the
-  **excess** `Σ z² − n` in units of its null SD `sqrt(2n)`. The window is
-  *live* when some `|z|` reaches the line or the excess reaches
-  `--excess-sd` (2) SD, and *quiet* otherwise; a quiet read also says what it
-  rules out: no knob worth more than the line times its standard error;
+- the largest `|z|`, the **excess** `Σ z² − n` and the excess in units of
+  its null SD `sqrt(2n)`, and a knob's standard error in Elo across one
+  perturbation;
 - the **gain read**: what the tune has gained, in Elo, since iteration 0 and
   in the window. In segments of `--gain-segment` (500) iterations, each knob's
   gradient measured on the even iterations is multiplied by its actual moves
   on the odd ones, and the reverse, so no move is scored against the gradient
   that made it. Each comes with a null SD from `--null-reps` (40) re-draws of
   every sign, from `--null-seed` (1) on the `spsa-read-null` stream;
-- a **forecast**, an upper bound: the next `--forecast-span` (2,000)
-  iterations' gain if the window's excess held through the rest of the
-  schedule, with its SD; none at the end of the schedule, and `0` turns it
-  off;
-- **rails**: a knob whose centre is within one perturbation of a bound while
-  its `z` points outward past the familywise line, its distance to the bound
-  and its outward `z`; and how often either of its arms was clamped;
-- the run's own fault counters, which decide nothing.
+- for each knob, its perturbation, its centre's distance to the nearer
+  bound, its **outward `z`** — `z` toward that bound, positive when the
+  knob pushes out of its range — and how often either of its arms was
+  clamped;
+- the run's own fault counters.
 
-The read never says whether to continue or stop a tune: that is for whoever
-runs it. A project that stops a quiet tune reads `spsa read --json` (schema
-`colosseum-spsa-read-v1`) and pauses the tune with `--stop-after-iteration`.
+The read states no verdict: whether the window still has gradient, whether a
+knob is stuck at a bound and whether to continue or stop are the questions
+you answer with your own lines. A common reading: the window is *live* when
+some `|z|` reaches the familywise line `Φ⁻¹(1 − (1 − (1 − α)^(1/n)) / 2)`
+(2.73 for 8 knobs at `α = 0.05`) or the excess reaches 2 null SD, and a knob
+is pushing at its bound when its distance is within one perturbation and its
+outward `z` passes the same line. A project that stops a tune reads
+`spsa read --json` (schema `colosseum-spsa-read-v1`) and pauses it with
+`--stop-after-iteration`.
 
 Before reading, the journal's replay is compared with every record of
 centres the run keeps — the checkpoint's, and a finished tune's
@@ -227,18 +227,19 @@ The report includes completed iteration and percentage, a linear ETA from the
 tune's elapsed time as its checkpoint records it across every stop and
 resume (and, when the latest invocation asked to stop before the end, the
 ETA to that stop, `eta.stop_point` in JSON), and every knob's current
-floating centre and normalized trajectory. With at least six completed
-iterations it compares the mean of each history third and labels these fixed
-heuristics:
+floating centre, perturbation and normalized trajectory, and three figures
+per knob:
 
-- frequent exact bound contact means at least 20% of completed centres;
-- little seed movement means at most 1% of the requested range;
-- recent stability means the latest third spans at most 1% of the range;
-- a scheduled perturbation below `0.5` is below UCI integer resolution.
+- the share of completed centres exactly on either bound;
+- the net movement from the initial value, as a share of the range;
+- with at least six completed iterations, the span of the latest third of
+  the centres, as a share of the range, beside the mean of each history
+  third.
 
-Short histories say `insufficient-history`; they do not manufacture a trend.
-Every signal explains that it can arise from the objective, noise, gain,
-clipping, host variation or an unsuitable range. None is a causal or
+They are figures with no threshold: a short history gives no thirds rather
+than inventing a trend, and what counts as stuck, still or settled is yours
+to decide. Any of them can arise from the objective, noise, the gain,
+clipping, host variation or an unsuitable range; none is a causal or
 convergence claim, and the command never advises continuing or abandoning a
 tune. JSON status also exposes the same candidate-vector policy used at
 completion, so whichever estimator the run selected is the one you see mid-run
@@ -427,7 +428,8 @@ result file:
 
 ```text
 colosseum-cli sprt --apply path/to/spsa-run/result.json \
-  --max-pairs 10000 --preset gainer
+  --max-pairs 10000 --model normalized \
+  --elo0 0 --elo1 5 --alpha 0.05 --beta 0.05
 ```
 
 The tuned vector is engine A and the original vector is engine B. Both arms use

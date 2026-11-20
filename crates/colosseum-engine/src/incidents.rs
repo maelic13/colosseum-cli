@@ -5,7 +5,8 @@
 //! stderr output — so the *cause* can actually be established instead of
 //! guessed.
 //!
-//! The directory is set once at startup by the GUI (`<data dir>/logs/incidents`).
+//! The directory is set once at startup by the command that plays games, to
+//! its run directory's `logs/incidents`.
 //! When unset (unit tests, headless use), writing is a silent no-op.
 
 use std::path::PathBuf;

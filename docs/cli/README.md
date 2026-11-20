@@ -13,7 +13,7 @@ required:
 colosseum-cli engine inspect ./my-engine
 colosseum-cli engine check ./my-engine
 colosseum-cli match --games 100 ./candidate ./baseline
-colosseum-cli sprt ./candidate ./baseline --max-pairs 5000 --preset gainer
+colosseum-cli sprt ./candidate ./baseline --max-pairs 5000 --model normalized --elo0 0 --elo1 5 --alpha 0.05 --beta 0.05
 colosseum-cli calibrate ./my-engine ./my-engine --book ./openings.epd
 colosseum-cli nps ./my-engine --nodes 10000000
 colosseum-cli tournament plan --engine ./engine-a --engine ./engine-b --engine ./engine-c

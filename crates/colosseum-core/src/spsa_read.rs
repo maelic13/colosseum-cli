@@ -1,10 +1,12 @@
-//! `spsa read`: whether a tune still has gradient, read from its own signs,
-//! schedule and scores.
+//! `spsa read`: the figures that say whether a tune still has gradient, read
+//! from its own signs, schedule and scores.
 //!
 //! Every definition is pinned in `docs/architecture/spsa-read-definitions.md`
 //! against the engine projects' reference reader. The read is pure: it takes
 //! a run's centres and scores and draws its signs from the run's own
-//! perturbation stream, so the caller supplies no sign and no gain.
+//! perturbation stream, so the caller supplies no sign and no gain. It states
+//! no verdict: the lines a project reads the figures against, and what it
+//! does about them, are the project's.
 
 use serde::Serialize;
 use thiserror::Error;
@@ -14,7 +16,6 @@ use crate::spsa::{
     SpsaError, SpsaKnob, SpsaSchedule, arm_clamp, perturbations_for_iteration,
     round_half_away_from_zero,
 };
-use crate::stats::{StatisticsError, inverse_normal_cdf};
 
 /// The versioned schema of a read.
 pub const SPSA_READ_SCHEMA: &str = "colosseum-spsa-read-v1";
@@ -50,11 +51,6 @@ pub struct SpsaReadOptions {
     pub null_reps: u32,
     pub null_seed: u64,
     pub gain_segment: u32,
-    /// Iterations the forecast covers; 0 turns it off.
-    pub forecast_span: u32,
-    pub family_alpha: f64,
-    /// The excess's line in units of its null SD.
-    pub excess_sd: f64,
 }
 
 /// The default window: the last 1,000 completed iterations.
@@ -68,9 +64,6 @@ impl Default for SpsaReadOptions {
             null_reps: 40,
             null_seed: 1,
             gain_segment: 500,
-            forecast_span: 2_000,
-            family_alpha: 0.05,
-            excess_sd: 2.0,
         }
     }
 }
@@ -93,8 +86,6 @@ pub enum SpsaReadError {
     },
     #[error(transparent)]
     Spsa(#[from] SpsaError),
-    #[error(transparent)]
-    Statistics(#[from] StatisticsError),
 }
 
 /// What a read says, in knob order.
@@ -109,43 +100,16 @@ pub struct SpsaRead {
     pub games_per_iteration: u32,
     /// Elo across one perturbation per unit of mean `D`: `695 / (2G)`.
     pub elo_per_unit_score: f64,
-    pub family_alpha: f64,
-    /// The `|z|` that `n` independent coordinates pass together with
-    /// probability `family_alpha`.
-    pub familywise_line: f64,
+    /// A coordinate's standard error in Elo across one perturbation, the same
+    /// for every coordinate: `E × sqrt(Σ D²) / W`.
+    pub coordinate_se_elo: f64,
     pub max_abs_z: f64,
-    /// The coordinates whose `|z|` reaches the familywise line.
-    pub over_line: Vec<String>,
     /// `Σ z² − n`.
     pub excess: f64,
     /// The excess in units of its null SD, `sqrt(2n)`.
     pub excess_in_sd: f64,
-    /// The excess's line, in null SD.
-    pub excess_line_sd: f64,
-    /// Some `|z|` reaches the familywise line, or the excess reaches its
-    /// line.
-    pub live: bool,
-    pub quiet_rules_out: SpsaQuietBound,
     pub gain: SpsaGainReads,
-    /// Absent when off or at the end of the schedule.
-    pub forecast: Option<SpsaForecast>,
-    /// Coordinates near a bound whose outward `z` reaches the line.
-    pub rails: Vec<String>,
-    /// Coordinates with an arm clamped on more than 1% of iterations.
-    pub clamped_over_one_percent: Vec<String>,
     pub coordinates: Vec<SpsaReadCoordinate>,
-}
-
-/// What a quiet read rules out.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct SpsaQuietBound {
-    /// No coordinate is worth more, in Elo across one perturbation: the line
-    /// times the standard error.
-    pub coordinate_elo: f64,
-    /// A coordinate's standard error in Elo across one perturbation.
-    pub coordinate_se_elo: f64,
-    /// Twice the forecast's SD: its upper reading; absent with no forecast.
-    pub forecast_two_sd_elo: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -169,16 +133,6 @@ pub struct SpsaGainRead {
     pub null_sd: f64,
 }
 
-/// An upper bound on the next iterations' gain, from the window's excess
-/// held constant through the schedule.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct SpsaForecast {
-    pub span: [u32; 2],
-    pub elo: f64,
-    pub sd: f64,
-    pub upper_bound: bool,
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SpsaReadCoordinate {
     pub name: String,
@@ -193,10 +147,10 @@ pub struct SpsaReadCoordinate {
     pub perturbation: f64,
     /// To the nearer bound.
     pub distance_to_bound: f64,
-    /// `z` toward the bound the centre is within one perturbation of; absent
-    /// when it is near neither.
-    pub outward_z: Option<f64>,
-    pub rail: bool,
+    /// `z` toward the nearer bound: `z` when it is the maximum, `-z` when it
+    /// is the minimum (the minimum at the middle). Positive is a push out of
+    /// the range.
+    pub outward_z: f64,
     /// Iterations `[0, to)` on which either arm left the range.
     pub clamp_share: f64,
 }
@@ -230,17 +184,6 @@ pub fn worst_move_deviation(
         worst = worst.max((derived - recorded).abs() / unit);
     }
     Ok(worst)
-}
-
-/// The familywise line for `n` coordinates at family alpha `alpha`.
-pub fn familywise_line(n: usize, alpha: f64) -> Result<f64, SpsaReadError> {
-    if n == 0 || !(alpha > 0.0 && alpha < 1.0) {
-        return Err(SpsaReadError::Parameter(format!(
-            "the family alpha must be in (0, 1) and a tune needs a coordinate; got {alpha} for {n}"
-        )));
-    }
-    let per = 1.0 - (1.0 - alpha).powf(1.0 / n as f64);
-    Ok(inverse_normal_cdf(1.0 - per / 2.0)?)
 }
 
 /// The run's gains and signs at every completed iteration.
@@ -392,33 +335,6 @@ fn population_sd(values: &[f64]) -> f64 {
     (values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64).sqrt()
 }
 
-/// Elo of the gain over `[to, segment_end)` per unit of the window's excess,
-/// held constant through the schedule: `Σ r_k f_k²` over the span, times the
-/// window's mean `D²` and `E`, over `2 × mean f_k² × W`, with
-/// `f_k = (k + 1)^−γ`; a coordinate's `c0` cancels. `None` when the span is
-/// empty. Every knob of a tune shares `r_k`, so `knob` is any of them.
-pub fn forecast_factor(
-    schedule: SpsaSchedule,
-    knob: SpsaKnob,
-    [from, to]: [u32; 2],
-    segment_end: u32,
-    mean_d2: f64,
-    elo: f64,
-) -> Result<Option<f64>, SpsaReadError> {
-    if segment_end <= to || to <= from {
-        return Ok(None);
-    }
-    let gamma = schedule.gamma();
-    let f2 = |k: u32| (f64::from(k) + 1.0).powf(-gamma).powi(2);
-    let mut moved = 0.0;
-    for k in to..segment_end {
-        moved += schedule.coefficients(k, knob)?.r * f2(k);
-    }
-    let width = f64::from(to - from);
-    let held = (from..to).map(f2).sum::<f64>() / width;
-    Ok(Some(moved * mean_d2 * elo / (2.0 * held * width)))
-}
-
 /// Read a run.
 pub fn read(run: &SpsaReadRun<'_>, options: SpsaReadOptions) -> Result<SpsaRead, SpsaReadError> {
     let n = run.knobs.len();
@@ -457,12 +373,6 @@ pub fn read(run: &SpsaReadRun<'_>, options: SpsaReadOptions) -> Result<SpsaRead,
             "the gain segment must be at least one iteration".into(),
         ));
     }
-    if !(options.excess_sd.is_finite() && options.excess_sd > 0.0) {
-        return Err(SpsaReadError::Parameter(format!(
-            "the excess line must be a positive number of SD; got {}",
-            options.excess_sd
-        )));
-    }
     if run.games_per_iteration == 0 {
         return Err(SpsaReadError::Parameter(
             "a tune plays at least one game an iteration".into(),
@@ -492,26 +402,8 @@ pub fn read(run: &SpsaReadRun<'_>, options: SpsaReadOptions) -> Result<SpsaRead,
             }
         })
         .collect::<Vec<_>>();
-    let line = familywise_line(n, options.family_alpha)?;
     let null_sd = (2.0 * n as f64).sqrt();
     let excess = z.iter().map(|z| z * z).sum::<f64>() - n as f64;
-    let over_line = (0..n)
-        .filter(|&i| z[i].abs() >= line)
-        .map(|i| run.names[i].clone())
-        .collect::<Vec<_>>();
-    let live = !over_line.is_empty() || excess >= options.excess_sd * null_sd;
-    let se_elo = elo * sum_d2.sqrt() / width;
-
-    let planned = run.schedule.iterations();
-    let segment_end = to.saturating_add(options.forecast_span).min(planned);
-    let factor = forecast_factor(
-        run.schedule,
-        run.knobs[0],
-        [from, to],
-        segment_end,
-        sum_d2 / width,
-        elo,
-    )?;
 
     let segment = options.gain_segment as usize;
     let actual_delta = |k: usize, i: usize| f64::from(prepared.delta[k][i]);
@@ -554,13 +446,10 @@ pub fn read(run: &SpsaReadRun<'_>, options: SpsaReadOptions) -> Result<SpsaRead,
         let centre = run.centres[hi][i];
         let perturbation = prepared.c[hi - 1][i];
         let (min, max) = (knob.min as f64, knob.max as f64);
-        let near_min = centre - min <= perturbation;
-        let near_max = max - centre <= perturbation;
-        let outward_z = match (near_min, near_max) {
-            (true, true) => Some(z[i].abs()),
-            (false, true) => Some(z[i]),
-            (true, false) => Some(-z[i]),
-            (false, false) => None,
+        let outward_z = if max - centre < centre - min {
+            z[i]
+        } else {
+            -z[i]
         };
         let clamped = (0..hi)
             .filter(|&k| {
@@ -578,51 +467,23 @@ pub fn read(run: &SpsaReadRun<'_>, options: SpsaReadOptions) -> Result<SpsaRead,
             perturbation,
             distance_to_bound: (centre - min).min(max - centre),
             outward_z,
-            rail: outward_z.is_some_and(|outward| outward >= line),
             clamp_share: clamped as f64 / hi as f64,
         });
     }
-    let rails = coordinates
-        .iter()
-        .filter(|coordinate| coordinate.rail)
-        .map(|coordinate| coordinate.name.clone())
-        .collect();
-    let clamped_over_one_percent = coordinates
-        .iter()
-        .filter(|coordinate| coordinate.clamp_share > 0.01)
-        .map(|coordinate| coordinate.name.clone())
-        .collect();
 
     Ok(SpsaRead {
         schema: SPSA_READ_SCHEMA,
         window: [from, to],
         completed_iterations: completed_u32,
-        planned_iterations: planned,
+        planned_iterations: run.schedule.iterations(),
         coordinate_count: n,
         games_per_iteration: run.games_per_iteration,
         elo_per_unit_score: elo,
-        family_alpha: options.family_alpha,
-        familywise_line: line,
+        coordinate_se_elo: elo * sum_d2.sqrt() / width,
         max_abs_z: z.iter().map(|z| z.abs()).fold(0.0, f64::max),
-        over_line,
         excess,
         excess_in_sd: excess / null_sd,
-        excess_line_sd: options.excess_sd,
-        live,
-        quiet_rules_out: SpsaQuietBound {
-            coordinate_elo: line * se_elo,
-            coordinate_se_elo: se_elo,
-            forecast_two_sd_elo: factor.map(|factor| 2.0 * factor * null_sd),
-        },
         gain,
-        forecast: factor.map(|factor| SpsaForecast {
-            span: [to, segment_end],
-            elo: factor * excess,
-            sd: factor * null_sd,
-            upper_bound: true,
-        }),
-        rails,
-        clamped_over_one_percent,
         coordinates,
     })
 }
@@ -748,58 +609,6 @@ mod tests {
     }
 
     #[test]
-    fn familywise_lines_are_the_references() {
-        // Python's NormalDist().inv_cdf at the reference's formula.
-        for (n, line) in [
-            (8, 2.727_007_896_719_966_7),
-            (15, 2.927_798_415_447_027_6),
-            (29, 3.126_804_994_158_009),
-            (49, 3.277_784_002_744_794),
-            (82, 3.420_382_087_646_781),
-        ] {
-            assert!(
-                (familywise_line(n, 0.05).unwrap() - line).abs() < 1e-12,
-                "{n}"
-            );
-        }
-        assert!(familywise_line(0, 0.05).is_err());
-        assert!(familywise_line(4, 0.0).is_err());
-        assert!(familywise_line(4, 1.0).is_err());
-    }
-
-    #[test]
-    fn the_forecast_floor_has_the_recorded_shape() {
-        // The reference's B.5.6 forecast table: a read at 2,000 over the last
-        // 1,000 for the next 2,000 of a 6,000-iteration tune, mean D^2 11.6,
-        // 30 games an iteration.
-        let elo = ELO_PER_SCORE / 60.0;
-        for (r_end, floors) in [
-            (0.0031, [3.6, 5.0, 6.9, 9.0]),
-            (0.00155, [1.8, 2.5, 3.5, 4.5]),
-        ] {
-            let knob = artifact(6_000, r_end, &[(0, 100)], 1).knobs[0]
-                .knob()
-                .unwrap();
-            let schedule = SpsaSchedule::new(6_000).unwrap();
-            let factor = forecast_factor(schedule, knob, [1_000, 2_000], 4_000, 11.6, elo)
-                .unwrap()
-                .unwrap();
-            for (n, floor) in [8_usize, 15, 29, 49].into_iter().zip(floors) {
-                let ours = 2.0 * factor * (2.0 * n as f64).sqrt();
-                assert!((ours - floor).abs() < 0.05, "{r_end} {n}: {ours}");
-            }
-        }
-        let knob = artifact(100, 0.00155, &[(0, 100)], 1).knobs[0]
-            .knob()
-            .unwrap();
-        let schedule = SpsaSchedule::new(100).unwrap();
-        assert_eq!(
-            forecast_factor(schedule, knob, [0, 100], 100, 1.0, 1.0),
-            Ok(None)
-        );
-    }
-
-    #[test]
     fn the_gradient_counts_every_iteration() {
         // Constant perturbation 8; D = delta on 50 iterations and 0 on 50.
         // The slope is E * (50 * 8) / (2 * 100 * 64); leaving the zeros out
@@ -822,22 +631,16 @@ mod tests {
         let run = simulate(&[0.0; 4], &[50.0; 4], &[(0, 100); 4], 3_000, 2_000, 57_001);
         let read = run.read(quick());
         assert_eq!(read.window, [1_000, 2_000]);
+        // Four coordinates at the 5% familywise line, 2.49, and the excess
+        // under 2 SD: what a project reading these figures would call quiet.
         assert!(
-            !read.live,
+            read.max_abs_z < 2.49 && read.excess_in_sd < 2.0,
             "max |z| {}, excess {}",
-            read.max_abs_z, read.excess_in_sd
+            read.max_abs_z,
+            read.excess_in_sd
         );
-        assert!(read.over_line.is_empty());
         let gain = &read.gain.since_start;
         assert!(gain.elo.abs() < 4.0 * gain.null_sd.max(0.5), "{gain:?}");
-        // The forecast runs to the ceiling, and quiet bounds it.
-        let forecast = read.forecast.unwrap();
-        assert_eq!(forecast.span, [2_000, 3_000]);
-        assert!(forecast.upper_bound);
-        assert_eq!(
-            read.quiet_rules_out.forecast_two_sd_elo,
-            Some(2.0 * forecast.sd)
-        );
     }
 
     #[test]
@@ -847,17 +650,16 @@ mod tests {
         let gradients = [0.12, 0.0, 0.0, 0.0];
         let run = simulate(&gradients, &starts, &[(0, 100); 4], 3_000, 2_000, 9_001);
         let read = run.read(quick());
-        assert!(read.live);
-        assert_eq!(read.over_line, ["K0"]);
-        assert!(read.coordinates[0].z > read.familywise_line);
+        // Past the 5% familywise line for four coordinates, 2.49, alone.
+        assert!(read.coordinates[0].z > 2.49, "{:?}", read.coordinates[0]);
+        assert!(
+            read.coordinates[1..]
+                .iter()
+                .all(|coordinate| coordinate.z.abs() < 2.49)
+        );
         assert!(read.gain.since_start.elo > 2.0 * read.gain.since_start.null_sd);
-        assert!(read.forecast.unwrap().elo > 0.0);
-        assert!(read.rails.is_empty());
-        // At the ceiling there is no forecast, and no forecast floor.
-        let run = simulate(&gradients, &starts, &[(0, 100); 4], 2_000, 2_000, 9_001);
-        let read = run.read(quick());
-        assert_eq!(read.forecast, None);
-        assert_eq!(read.quiet_rules_out.forecast_two_sd_elo, None);
+        // Mid-range, it pushes toward the far bound: inward from the nearer.
+        assert!(read.coordinates[0].outward_z < 0.0);
     }
 
     #[test]
@@ -867,13 +669,11 @@ mod tests {
         let gradients = [0.12, 0.0, 0.0, 0.0];
         let run = simulate(&gradients, &starts, &[(0, 100); 4], 3_000, 2_000, 9_001);
         let read = run.read(quick());
-        assert_eq!(read.rails, ["K0"]);
         let coordinate = &read.coordinates[0];
         assert!(coordinate.clamp_share > 0.5, "{coordinate:?}");
-        assert!(coordinate.outward_z.unwrap() >= read.familywise_line);
+        assert!(coordinate.outward_z > 2.49, "{coordinate:?}");
         assert!(coordinate.distance_to_bound <= coordinate.perturbation);
-        assert_eq!(read.clamped_over_one_percent, ["K0"]);
-        assert_eq!(read.coordinates[1].outward_z, None);
+        assert!(read.coordinates[1].clamp_share < 0.01);
     }
 
     /// One coordinate whose window `z` is set exactly: `D = +-delta` on
@@ -919,25 +719,21 @@ mod tests {
     }
 
     #[test]
-    fn a_rail_needs_an_outward_z_past_the_line() {
+    fn the_outward_z_points_toward_the_nearer_bound() {
         let expected = 120.0 / 1_000_f64.sqrt();
         let at_max = crafted(120, 98.0);
         assert!((at_max.coordinates[0].z - expected).abs() < 1e-12);
-        assert_eq!(at_max.rails, ["K0"]);
-        assert_eq!(crafted(-120, 2.0).rails, ["K0"]);
-        // Inward at a bound: live, but no rail.
-        let inward = crafted(-120, 98.0);
-        assert!(inward.live);
-        assert!(inward.rails.is_empty());
-        assert!(inward.coordinates[0].outward_z.unwrap() < 0.0);
-        // Under the line at a bound: an outward z, no rail.
-        let weak = crafted(40, 98.0);
-        assert!(weak.coordinates[0].outward_z.unwrap() > 0.0);
-        assert!(weak.rails.is_empty());
-        // Mid-range: no bound to push against.
-        let free = crafted(120, 50.0);
-        assert_eq!(free.coordinates[0].outward_z, None);
-        assert!(free.rails.is_empty() && free.live);
+        assert!((at_max.coordinates[0].outward_z - expected).abs() < 1e-12);
+        assert!((at_max.coordinates[0].distance_to_bound - 2.0).abs() < 1e-12);
+        // At the minimum a negative z is outward.
+        let at_min = crafted(-120, 2.0);
+        assert!((at_min.coordinates[0].outward_z - expected).abs() < 1e-12);
+        // Pushed away from the nearer bound, it is negative.
+        assert!((crafted(-120, 98.0).coordinates[0].outward_z + expected).abs() < 1e-12);
+        // At the middle the minimum counts as nearer.
+        let middle = crafted(120, 50.0);
+        assert!((middle.coordinates[0].outward_z + expected).abs() < 1e-12);
+        assert!((middle.coordinates[0].distance_to_bound - 50.0).abs() < 1e-12);
     }
 
     #[test]

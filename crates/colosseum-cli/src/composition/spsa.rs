@@ -93,7 +93,7 @@ impl SpsaEngineArgs {
 pub(crate) enum SpsaAction {
     /// Report the exact gain schedule and factual workload without launching an engine.
     Plan(SpsaPlanCommand),
-    /// Read the last durable tune snapshot and report labelled trajectory heuristics.
+    /// Read the last durable tune snapshot and report each knob's trajectory.
     Status {
         /// Self-contained SPSA run directory to inspect without mutation.
         run_directory: PathBuf,
@@ -101,10 +101,10 @@ pub(crate) enum SpsaAction {
     /// Print the centre vector after every completed iteration, rebuilt from
     /// the journal without changing the run; works while the tune runs.
     History(SpsaHistoryCommand),
-    /// Read whether the tune still has gradient: each knob's z over a
-    /// window, the familywise and excess lines, the cross-fitted gain with
-    /// its sign-randomised null, a forecast and rails; read-only, safe while
-    /// the tune runs.
+    /// Report the figures that say whether the tune still has gradient: each
+    /// knob's z over a window, the excess, the cross-fitted gain with its
+    /// sign-randomised null, and each knob's push toward its nearer bound;
+    /// no verdict. Read-only, safe while the tune runs.
     Read(SpsaReadCommand),
 }
 
@@ -1119,15 +1119,18 @@ pub(crate) fn print_spsa_status(report: &SpsaStatusOutput, run_directory: &Path)
                     .trim_start()
                 )
             });
+        let share = |share: Option<f64>| {
+            share.map_or_else(|| "-".to_owned(), |share| format!("{:.1}%", share * 100.0))
+        };
         println!(
-            "{}: {:.6} ({:.2}% of range); bound-contact {:?}, seed-movement {:?}, recent-stability {:?}, rounding-resolution {:?}{clamped}",
+            "{}: {:.6} ({:.2}% of range); perturbation {:.3}; at a bound {}, moved {:.2}% of range, latest third spans {}{clamped}",
             knob.name,
             knob.current,
             knob.current_normalized_to_range * 100.0,
-            knob.frequent_bound_contact.state,
-            knob.little_net_movement.state,
-            knob.recent_stability.state,
-            knob.dead_perturbation.state
+            knob.current_perturbation,
+            share(knob.bound_contact_share),
+            knob.net_movement_share_of_range * 100.0,
+            share(knob.latest_third_span_share_of_range)
         );
     }
     if let Some(reason) = &report.candidate_unavailable_reason {

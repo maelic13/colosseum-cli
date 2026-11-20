@@ -51,11 +51,11 @@ macro_rules! id_type {
 }
 
 id_type!(
-    /// Identifies an engine configuration in the engine library.
+    /// Identifies one engine configuration.
     EngineId
 );
 id_type!(
-    /// Identifies one run-local participant independently of any GUI library.
+    /// Identifies one run-local participant.
     ParticipantId
 );
 id_type!(

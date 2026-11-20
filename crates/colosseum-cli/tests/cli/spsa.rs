@@ -625,10 +625,13 @@ fn complete_mini_match_is_one_durable_gradient_commit() {
     assert_eq!(status["type"], "spsa-status");
     assert_eq!(status["report"]["diagnostics"]["completed_iterations"], 1);
     assert_eq!(status["report"]["diagnostics"]["percent_complete"], 100.0);
-    assert_eq!(
-        status["report"]["diagnostics"]["knobs"][0]["frequent_bound_contact"]["state"],
-        "insufficient-history"
-    );
+    let knob = &status["report"]["diagnostics"]["knobs"][0];
+    assert_eq!(status["report"]["diagnostics"]["schema_version"], 2);
+    // One iteration: a contact share and a movement, but no thirds yet.
+    assert!(knob["bound_contact_share"].is_number(), "{knob}");
+    assert!(knob["net_movement_share_of_range"].is_number(), "{knob}");
+    assert!(knob["latest_third_span_share_of_range"].is_null(), "{knob}");
+    assert!(knob.get("frequent_bound_contact").is_none(), "{knob}");
     assert_eq!(
         status["report"]["candidate_result"]["parameters"][0]["tuned"],
         16
@@ -655,8 +658,16 @@ fn sprt_apply_consumes_the_unedited_spsa_result_and_refuses_other_executables() 
         .args([
             "--max-pairs",
             "1",
-            "--preset",
-            "gainer",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
+            "--elo1",
+            "5",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
             "--a-depth",
             "1",
             "--b-depth",
@@ -706,7 +717,21 @@ fn sprt_apply_consumes_the_unedited_spsa_result_and_refuses_other_executables() 
         .arg(&result)
         .arg("--apply-executable")
         .arg(different)
-        .args(["--max-pairs", "1", "--preset", "gainer", "--dry-run"])
+        .args([
+            "--max-pairs",
+            "1",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
+            "--elo1",
+            "5",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
+            "--dry-run",
+        ])
         .output()
         .unwrap();
     assert_eq!(refused.status.code(), Some(2));
@@ -726,8 +751,16 @@ fn sprt_apply_consumes_the_unedited_spsa_result_and_refuses_other_executables() 
         .args([
             "--max-pairs",
             "1",
-            "--preset",
-            "gainer",
+            "--model",
+            "normalized",
+            "--elo0",
+            "0",
+            "--elo1",
+            "5",
+            "--alpha",
+            "0.05",
+            "--beta",
+            "0.05",
             "--dry-run",
             "--json",
         ])

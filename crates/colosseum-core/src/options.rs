@@ -1,5 +1,5 @@
-//! UCI option *schema* (as auto-detected from an engine) and *values* (as set by
-//! the user). The schema drives which editor widget the GUI shows per option.
+//! UCI option *schema* (as an engine declares it in its handshake) and
+//! *values* (as the user sets them).
 
 use serde::{Deserialize, Serialize};
 
@@ -122,20 +122,6 @@ pub fn is_uci_true(value: &str) -> bool {
 pub fn is_hash_option(name: &str) -> bool {
     let n = name.to_ascii_lowercase();
     n == "hash" || n == "hash size" || n == "hashsize" || n == "memory"
-}
-
-/// True when `name` is an endgame-tablebase option (path, cache, policy…).
-/// Unlike thread/hash matching this is substring-based, but on unambiguous
-/// tablebase brand names ("SyzygyPath", "NalimovCache", "GaviotaTbPath",
-/// "EGTB Folder", Scorpio's "egbb_path"…) that don't collide with anything
-/// else. Used to withhold tablebase configuration from engines when a
-/// tournament runs with tablebases disabled.
-#[must_use]
-pub fn is_tablebase_option(name: &str) -> bool {
-    let n = normalize_option_name(name);
-    ["syzygy", "gaviota", "nalimov", "egtb", "egbb", "tablebase"]
-        .iter()
-        .any(|kw| n.contains(kw))
 }
 
 /// A concrete value the user has chosen for a UCI option, sent via `setoption`.

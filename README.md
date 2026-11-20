@@ -72,7 +72,7 @@ colosseum-cli match ./candidate ./baseline --games 100 --a-movetime-ms 100 --b-m
 Gate a change with a sequential test that stops as soon as the evidence is in:
 
 ```text
-colosseum-cli sprt ./candidate ./baseline --preset gainer --max-pairs 5000 --book ./openings.epd --dir ./runs/gate-42
+colosseum-cli sprt ./candidate ./baseline --model normalized --elo0 0 --elo1 5 --alpha 0.05 --beta 0.05 --max-pairs 5000 --book ./openings.epd --dir ./runs/gate-42
 ```
 
 Every opening is played twice, once with each colour. A run refuses to start
